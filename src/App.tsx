@@ -9,7 +9,6 @@ const App: React.FC = () => {
     const [expression, setExpression] = useState('neutral');
     const [currentText, setCurrentText] = useState('');
     const [charIndex, setCharIndex] = useState(0);
-    const [phonemes, setPhonemes] = useState<Array<{text: string, charIndex: number, visemes: string[]}>>([]);
 
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
@@ -19,7 +18,6 @@ const App: React.FC = () => {
                     onExpression={setExpression} 
                     onText={setCurrentText} 
                     onCharIndex={setCharIndex}
-                    onPhonemes={setPhonemes}
                 />
             </div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflow: 'hidden' }}>
@@ -28,7 +26,6 @@ const App: React.FC = () => {
                     expression={expression} 
                     currentText={currentText} 
                     charIndex={charIndex}
-                    phonemes={phonemes}
                 />
             </div>
         </div>
