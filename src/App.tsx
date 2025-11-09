@@ -15,9 +15,6 @@ const App: React.FC = () => {
             <div style={{ flex: 2, paddingLeft: 10, paddingRight: 10 }}>
                 <ChatRoom 
                     onSpeak={setIsSpeaking} 
-                    onExpression={setExpression} 
-                    onText={setCurrentText} 
-                    onCharIndex={setCharIndex}
                 />
             </div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflow: 'hidden' }}>

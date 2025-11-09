@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Input, Button, List } from 'antd';
+import { useTts } from '../hooks/useTts';
 
 interface Message {
     text: string;
@@ -8,21 +9,45 @@ interface Message {
 
 interface ChatRoomProps {
     onSpeak: (speaking: boolean) => void;
-    onExpression: (expression: string) => void;
-    onText: (text: string) => void;
-    onCharIndex: (index: number) => void;
+    onTextUpdate?: (text: string) => void;
 }
 
-const ChatRoom: React.FC<ChatRoomProps> = ({ onSpeak, onExpression, onText, onCharIndex }) => {
+const ChatRoom: React.FC<ChatRoomProps> = ({ onSpeak, onTextUpdate }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
 
+    const handleTextUpdate = (updatedText: string) => {
+        setMessages(prev => {
+            const newMsgs = [...prev];
+            if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].sender === 'bot') {
+                newMsgs[newMsgs.length - 1].text = updatedText;
+            }
+            return newMsgs;
+        });
+    };
+
+    const { speak } = useTts({ onSpeak, onTextUpdate: handleTextUpdate });
+
     const sendMessage = async (text: string) => {
         setMessages(prev => [...prev, { text, sender: 'user' }]);
-        // 簡化邏輯，移除 Ollama 和嘴型同步
-        setMessages(prev => [...prev, { text: '收到訊息', sender: 'bot' }]);
+        try {
+            // Mock n8n response
+            console.log('訊息已發送:', text);
+            // Simulate bot response after 2 seconds
+            setTimeout(async () => {
+                const botResponse = text;
+                setMessages(prev => [...prev, { text: '', sender: 'bot' }]);
+                // Play TTS using useTts
+                console.log('Calling speak with botResponse:', botResponse);
+                speak(botResponse);
+            }, 2000);
+        } catch (error) {
+            console.error('模擬錯誤:', error);
+        }
         setInput('');
-    }; const startVoiceInput = () => {
+    };
+    
+    const startVoiceInput = () => {
         const recognition = new (window as any).webkitSpeechRecognition();
         recognition.lang = 'zh-TW';
         recognition.continuous = false;
@@ -41,7 +66,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ onSpeak, onExpression, onText, onCh
     };
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '20px 0', border: '2px solid #ccc', borderRadius: '8px', backgroundColor: '#fafafa', paddingLeft: 30, paddingRight: 30 }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '20px 0', border: '2px solid #ccc', borderRadius: '8px', backgroundColor: '#fafafa' }}>
             <List
                 dataSource={messages}
                 renderItem={(item) => (
@@ -58,19 +83,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ onSpeak, onExpression, onText, onCh
                 )}
                 style={{ flex: 1, overflowY: 'auto' }}
             />
-            
-            <div style={{ display: 'flex', flexDirection: 'column'}}>
+            <Input.Group compact style={{ marginTop: 10 }}>
                 <Input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onPressEnter={() => sendMessage(input)}
                     placeholder="輸入訊息"
-                    style={{ width: '100%', padding: '0 30px', height: 50, resize: 'none', fontSize: 16 }}
+                    style={{ width: '70%' }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-                    <Button onClick={startVoiceInput} style={{ marginRight: 10 }}>語音</Button>
-                    <Button onClick={() => sendMessage(input)}>發送</Button>
-                </div>
-            </div>
+                <Button onClick={() => sendMessage(input)}>發送</Button>
+                <Button onClick={startVoiceInput}>語音</Button>
+            </Input.Group>
         </div>
     );
 };
