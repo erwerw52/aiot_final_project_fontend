@@ -62,17 +62,17 @@ export const useTts = ({ onSpeak, onCharIndex, onTextUpdate }: UseTtsProps) => {
             const audio = new TtsQuestV3Voicevox(20, text, undefined); // speakerId=20, no API key
 
             audio.onloadedmetadata = () => {
-
+                console.log('Audio loaded metadata');
                 audio.onplay = () => {
                     console.log('Audio started playing');
                     onSpeak(true);
+                    // 確保最後顯示完整文字
+                    if (onTextUpdate) {
+                        onTextUpdate(text);
+                    }
                     audio.onended = () => {
                         console.log('Audio ended');
                         onSpeak(false);
-                        // 確保最後顯示完整文字
-                        if (onTextUpdate) {
-                            onTextUpdate(text);
-                        }
                     };
                 };
             };
@@ -83,11 +83,14 @@ export const useTts = ({ onSpeak, onCharIndex, onTextUpdate }: UseTtsProps) => {
                 speakWithSpeechSynthesis(text);
             };
 
-            audio.play().catch(error => {
-                console.error('Play error:', error);
-                // 回退到 SpeechSynthesis
-                speakWithSpeechSynthesis(text);
-            });
+            audio.oncanplay = () => {
+                console.log('Audio can play');
+                audio.play().catch(error => {
+                    console.error('Play error:', error);
+                    // 回退到 SpeechSynthesis
+                    speakWithSpeechSynthesis(text);
+                });
+            };
         } catch (error) {
             console.error('TtsQuestV3Voicevox error:', error);
             // 回退到 SpeechSynthesis
