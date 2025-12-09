@@ -1,6 +1,8 @@
 package com.example.aiot_final_project_fontend
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -10,6 +12,7 @@ import ai.guiji.duix.sdk.client.Callback
 import ai.guiji.duix.sdk.client.VirtualModelUtil
 import ai.guiji.duix.sdk.client.Constant
 import ai.guiji.duix.sdk.client.render.RenderSink
+import ai.guiji.duix.sdk.client.bean.ImageFrame
 
 class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHandler {
 
@@ -29,6 +32,8 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "initialize" -> handleInitialize(result)
+            "checkBaseConfig" -> handleCheckBaseConfig(result)
+            "checkModel" -> handleCheckModel(call, result)
             "downloadBaseConfig" -> handleDownloadBaseConfig(call, result)
             "downloadModel" -> handleDownloadModel(call, result)
             "initModel" -> handleInitModel(call, result)
@@ -55,38 +60,76 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
         }
     }
 
+    private fun handleCheckBaseConfig(result: MethodChannel.Result) {
+        try {
+            val isDownloaded = VirtualModelUtil.checkBaseConfig(context)
+            Log.d(TAG, "Base config exists: $isDownloaded")
+            result.success(isDownloaded)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check base config", e)
+            result.error("CHECK_ERROR", e.message, null)
+        }
+    }
+
+    private fun handleCheckModel(call: MethodCall, result: MethodChannel.Result) {
+        val modelName = call.argument<String>("modelName")
+
+        if (modelName.isNullOrEmpty()) {
+            result.error("INVALID_ARGUMENT", "Model name cannot be null or empty", null)
+            return
+        }
+
+        try {
+            val isDownloaded = VirtualModelUtil.checkModel(context, modelName)
+            Log.d(TAG, "Model '$modelName' exists: $isDownloaded")
+            result.success(isDownloaded)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check model", e)
+            result.error("CHECK_ERROR", e.message, null)
+        }
+    }
+
     private fun handleDownloadBaseConfig(call: MethodCall, result: MethodChannel.Result) {
         val customUrl = call.argument<String>("url")
+        val mainHandler = Handler(Looper.getMainLooper())
 
         VirtualModelUtil.baseConfigDownload(context, object : VirtualModelUtil.ModelDownloadCallback {
             override fun onDownloadProgress(url: String, current: Long, total: Long) {
                 Log.d(TAG, "Base config download progress: $current/$total")
-                methodChannel?.invokeMethod("onDownloadProgress", mapOf(
-                    "url" to url,
-                    "current" to current.toInt(),
-                    "total" to total.toInt(),
-                    "isUnzip" to false
-                ))
+                mainHandler.post {
+                    methodChannel?.invokeMethod("onDownloadProgress", hashMapOf(
+                        "url" to url,
+                        "current" to current.toInt(),
+                        "total" to total.toInt(),
+                        "isUnzip" to false
+                    ))
+                }
             }
 
             override fun onUnzipProgress(url: String, current: Long, total: Long) {
                 Log.d(TAG, "Base config unzip progress: $current/$total")
-                methodChannel?.invokeMethod("onDownloadProgress", mapOf(
-                    "url" to url,
-                    "current" to current.toInt(),
-                    "total" to total.toInt(),
-                    "isUnzip" to true
-                ))
+                mainHandler.post {
+                    methodChannel?.invokeMethod("onDownloadProgress", hashMapOf(
+                        "url" to url,
+                        "current" to current.toInt(),
+                        "total" to total.toInt(),
+                        "isUnzip" to true
+                    ))
+                }
             }
 
             override fun onDownloadComplete(url: String, dir: java.io.File) {
                 Log.d(TAG, "Base config download completed: ${dir.absolutePath}")
-                result.success(true)
+                mainHandler.post {
+                    result.success(true)
+                }
             }
 
             override fun onDownloadFail(url: String, code: Int, msg: String) {
                 Log.e(TAG, "Base config download failed: $code, $msg")
-                result.error("DOWNLOAD_ERROR", msg, code)
+                mainHandler.post {
+                    result.error("DOWNLOAD_ERROR", msg, code)
+                }
             }
         })
     }
@@ -99,35 +142,45 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
             return
         }
 
+        val mainHandler = Handler(Looper.getMainLooper())
+
         VirtualModelUtil.modelDownload(context, modelUrl, object : VirtualModelUtil.ModelDownloadCallback {
             override fun onDownloadProgress(url: String, current: Long, total: Long) {
                 Log.d(TAG, "Model download progress: $current/$total")
-                methodChannel?.invokeMethod("onDownloadProgress", mapOf(
-                    "url" to url,
-                    "current" to current.toInt(),
-                    "total" to total.toInt(),
-                    "isUnzip" to false
-                ))
+                mainHandler.post {
+                    methodChannel?.invokeMethod("onDownloadProgress", hashMapOf(
+                        "url" to url,
+                        "current" to current.toInt(),
+                        "total" to total.toInt(),
+                        "isUnzip" to false
+                    ))
+                }
             }
 
             override fun onUnzipProgress(url: String, current: Long, total: Long) {
                 Log.d(TAG, "Model unzip progress: $current/$total")
-                methodChannel?.invokeMethod("onDownloadProgress", mapOf(
-                    "url" to url,
-                    "current" to current.toInt(),
-                    "total" to total.toInt(),
-                    "isUnzip" to true
-                ))
+                mainHandler.post {
+                    methodChannel?.invokeMethod("onDownloadProgress", hashMapOf(
+                        "url" to url,
+                        "current" to current.toInt(),
+                        "total" to total.toInt(),
+                        "isUnzip" to true
+                    ))
+                }
             }
 
             override fun onDownloadComplete(url: String, dir: java.io.File) {
                 Log.d(TAG, "Model download completed: ${dir.absolutePath}")
-                result.success(true)
+                mainHandler.post {
+                    result.success(true)
+                }
             }
 
             override fun onDownloadFail(url: String, code: Int, msg: String) {
                 Log.e(TAG, "Model download failed: $code, $msg")
-                result.error("DOWNLOAD_ERROR", msg, code)
+                mainHandler.post {
+                    result.error("DOWNLOAD_ERROR", msg, code)
+                }
             }
         })
     }
@@ -140,34 +193,46 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
             return
         }
 
-        // 創建 RenderSink
-        val renderSink = object : RenderSink {
-            override fun onAudioData(data: ByteArray) {
-                Log.d(TAG, "Received audio data: ${data.size} bytes")
-                // 可以根據需要處理音頻數據
+        try {
+            val mainHandler = Handler(Looper.getMainLooper())
+            
+            // 創建 RenderSink
+            val renderSink = object : RenderSink {
+                override fun onVideoFrame(imageFrame: ImageFrame) {
+                    Log.d(TAG, "Received video frame: ${imageFrame.width}x${imageFrame.height}")
+                    // 可以根據需要處理視頻幀數據
+                    // 例如：將幀數據發送到 Flutter 端或進行其他處理
+                }
             }
 
-            override fun onMotionData(motionName: String, data: FloatArray) {
-                // Motion 數據處理已移除
-                Log.d(TAG, "Motion data ignored: $motionName")
-            }
+            // 創建 DUIX 實例
+            duixInstance = DUIX(context, modelName, renderSink, object : Callback {
+                override fun onEvent(event: String, msg: String, info: Any?) {
+                    Log.d(TAG, "DUIX event: $event, message: $msg")
+                    mainHandler.post {
+                        // 將 info 轉換為可序列化的格式
+                        val serializableInfo = when (info) {
+                            null -> null
+                            is String, is Number, is Boolean -> info
+                            else -> info.toString()  // 其他類型轉換為字符串
+                        }
+                        
+                        methodChannel?.invokeMethod("onEvent", hashMapOf(
+                            "event" to event,
+                            "message" to msg,
+                            "info" to serializableInfo
+                        ))
+                    }
+                }
+            })
+
+            // 初始化模型
+            duixInstance?.init()
+            result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize DUIX model", e)
+            result.error("INIT_MODEL_ERROR", e.message, null)
         }
-
-        // 創建 DUIX 實例
-        duixInstance = DUIX(context, modelName, renderSink, object : Callback {
-            override fun onEvent(event: String, msg: String, info: Any?) {
-                Log.d(TAG, "DUIX event: $event, message: $msg")
-                methodChannel?.invokeMethod("onEvent", mapOf(
-                    "event" to event,
-                    "message" to msg,
-                    "info" to info
-                ))
-            }
-        })
-
-        // 初始化模型
-        duixInstance?.init()
-        result.success(true)
     }
 
     private fun handleIsModelReady(result: MethodChannel.Result) {
@@ -240,7 +305,7 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
     }
 
     private fun handleSetVolume(call: MethodCall, result: MethodChannel.Result) {
-        val volume = call.argument<Double>("volume") ?: 1.0
+        val volume = (call.argument<Any>("volume") as? Number)?.toDouble() ?: 1.0
 
         try {
             duixInstance?.setVolume(volume.toFloat())

@@ -7,12 +7,41 @@ class DuixSdkUtil {
   // MethodChannel
   static const MethodChannel _channel = MethodChannel('com.example.duix_sdk');
 
+  // 回調函數
+  Function(String event, String message, dynamic info)? _eventCallback;
+  Function(String url, int current, int total, bool isUnzip)? _downloadProgressCallback;
+
   // 私有構造函數
-  DuixSdkUtil._internal();
+  DuixSdkUtil._internal() {
+    _channel.setMethodCallHandler(_handleMethodCall);
+  }
 
   // 獲取單例實例
   factory DuixSdkUtil() {
     return _instance;
+  }
+
+  // 統一處理來自原生端的方法調用
+  Future<void> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'onEvent':
+        if (_eventCallback != null) {
+          final String event = call.arguments['event'] ?? '';
+          final String message = call.arguments['message'] ?? '';
+          final dynamic info = call.arguments['info'];
+          _eventCallback!(event, message, info);
+        }
+        break;
+      case 'onDownloadProgress':
+        if (_downloadProgressCallback != null) {
+          final String url = call.arguments['url'] ?? '';
+          final int current = call.arguments['current'] ?? 0;
+          final int total = call.arguments['total'] ?? 0;
+          final bool isUnzip = call.arguments['isUnzip'] ?? false;
+          _downloadProgressCallback!(url, current, total, isUnzip);
+        }
+        break;
+    }
   }
 
   // 初始化 SDK
@@ -26,8 +55,32 @@ class DuixSdkUtil {
     }
   }
 
+  // 檢查基礎配置是否已下載
+  Future<bool> checkBaseConfig() async {
+    try {
+      final result = await _channel.invokeMethod('checkBaseConfig');
+      return result == true;
+    } on PlatformException catch (e) {
+      print('Failed to check base config: ${e.message}');
+      return false;
+    }
+  }
+
+  // 檢查模型是否已下載
+  Future<bool> checkModel(String modelName) async {
+    try {
+      final result = await _channel.invokeMethod('checkModel', {
+        'modelName': modelName,
+      });
+      return result == true;
+    } on PlatformException catch (e) {
+      print('Failed to check model: ${e.message}');
+      return false;
+    }
+  }
+
   // 下載並解壓縮 base config
-  Future<bool> downloadBaseConfig([String? customUrl]) async {
+  Future<bool> downloadBaseConfig(String customUrl) async {
     try {
       final result = await _channel.invokeMethod('downloadBaseConfig', {
         'url': customUrl,
@@ -160,27 +213,18 @@ class DuixSdkUtil {
   }
 
   // 設置事件回調
-  void setEventCallback(Function(String event, String message, dynamic info) callback) {
-    _channel.setMethodCallHandler((call) async {
-      if (call.method == 'onEvent') {
-        final String event = call.arguments['event'];
-        final String message = call.arguments['message'];
-        final dynamic info = call.arguments['info'];
-        callback(event, message, info);
-      }
-    });
+  void setEventCallback(Function(String event, String message, dynamic info)? callback) {
+    _eventCallback = callback;
   }
 
   // 設置下載進度回調
-  void setDownloadProgressCallback(Function(String url, int current, int total, bool isUnzip) callback) {
-    _channel.setMethodCallHandler((call) async {
-      if (call.method == 'onDownloadProgress') {
-        final String url = call.arguments['url'];
-        final int current = call.arguments['current'];
-        final int total = call.arguments['total'];
-        final bool isUnzip = call.arguments['isUnzip'];
-        callback(url, current, total, isUnzip);
-      }
-    });
+  void setDownloadProgressCallback(Function(String url, int current, int total, bool isUnzip)? callback) {
+    _downloadProgressCallback = callback;
+  }
+
+  // 清除所有回調
+  void clearCallbacks() {
+    _eventCallback = null;
+    _downloadProgressCallback = null;
   }
 }
