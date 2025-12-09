@@ -61,7 +61,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withAlpha(2),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: const Icon(
@@ -100,7 +100,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withAlpha(1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -149,10 +149,10 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                     padding: const EdgeInsets.all(20),
                     margin: const EdgeInsets.only(top: 16),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.2),
+                      color: Colors.red.withAlpha(1),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: Colors.red.withOpacity(0.4),
+                        color: Colors.red.withAlpha(1),
                         width: 2,
                       ),
                     ),

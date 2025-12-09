@@ -80,7 +80,7 @@ class Launch extends _$Launch {
           print('AI 模型 $modelName 已存在，跳過下載');
           state = state.copyWith(
             message: 'AI 模型已就緒',
-            progress: 0.9,
+            progress: 1,
           );
         } else {
           state = state.copyWith(
@@ -205,7 +205,7 @@ class Launch extends _$Launch {
       case 'init.ready':
         state = state.copyWith(
           message: '模型初始化完成',
-          progress: 0.95,
+          progress: 1,
         );
         break;
       case 'init.error':
