@@ -1,11 +1,18 @@
-import 'package:aiot_final_project_fontend/model/enums/enum_launch_status.dart';
-import 'package:aiot_final_project_fontend/model/lanuch_state.dart';
-import 'package:aiot_final_project_fontend/util/duix_sdk_util.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:aiot_final_project_fontend/providers/launch_provider.dart';
+import 'dart:async';
+import '../services/duix_service.dart';
 
-class LaunchPage extends ConsumerStatefulWidget {
+enum LaunchStatus {
+  initial,
+  initializingSdk,
+  downloadingBase,
+  downloadingModel,
+  initializingModel,
+  completed,
+  error,
+}
+
+class LaunchPage extends StatefulWidget {
   const LaunchPage({
     super.key,
     required this.modelUrl,
@@ -18,27 +25,156 @@ class LaunchPage extends ConsumerStatefulWidget {
   final VoidCallback? onCompleted;
 
   @override
-  ConsumerState<LaunchPage> createState() => _LaunchPageState();
+  State<LaunchPage> createState() => _LaunchPageState();
 }
 
-class _LaunchPageState extends ConsumerState<LaunchPage> {
+class _LaunchPageState extends State<LaunchPage> {
+  final DuixService _service = DuixService();
+  StreamSubscription<Map<String, dynamic>>? _eventSubscription;
+  
+  LaunchStatus _status = LaunchStatus.initial;
+  double _progress = 0.0;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
-
+    
+    // 立即訂閱 EventChannel
+    _eventSubscription = _service.eventStream.listen((event) {
+      final type = event['type'] as String?;
+      print('收到事件: $type, 完整事件: $event');
+      
+      switch (type) {
+        case 'download_progress':
+          final category = event['category'] as String?;
+          final current = event['current'] as int? ?? 0;
+          final total = event['total'] as int? ?? 1;
+          final progress = current / total;
+          
+          if (category == 'base_config') {
+            setState(() {
+              _status = LaunchStatus.downloadingBase;
+              _progress = 0.1 + (progress * 0.2);
+            });
+          } else if (category == 'model') {
+            setState(() {
+              _status = LaunchStatus.downloadingModel;
+              _progress = 0.4 + (progress * 0.3);
+            });
+          }
+          break;
+          
+        case 'download_complete':
+          final category = event['category'] as String?;
+          if (category == 'base_config') {
+            setState(() => _progress = 0.3);
+          } else if (category == 'model') {
+            setState(() => _progress = 0.7);
+          }
+          break;
+          
+        case 'download_fail':
+          final error = event['error'] as String? ?? '下載失敗';
+          setState(() {
+            _status = LaunchStatus.error;
+            _errorMessage = error;
+          });
+          break;
+          
+        case 'init_ready':
+          print('模型初始化完成');
+          setState(() {
+            _status = LaunchStatus.completed;
+            _progress = 1.0;
+          });
+          break;
+          
+        case 'init_error':
+          final error = event['error'] as String? ?? '初始化失敗';
+          print('模型初始化錯誤: $error');
+          setState(() {
+            _status = LaunchStatus.error;
+            _errorMessage = error;
+            _progress = 0.9;
+          });
+          break;
+      }
+    });
+    
     // 開始初始化
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(launchProvider.notifier).startInitialization(
-        modelUrl: widget.modelUrl,
-        modelName: widget.modelName,
-      );
+      _startInitialization();
     });
+  }
+
+  Future<void> _startInitialization() async {
+    try {
+      setState(() {
+        _status = LaunchStatus.initializingSdk;
+        _progress = 0.1;
+      });
+
+      // 1. 檢查基礎配置
+      final hasBaseConfig = await _service.checkBaseConfig();
+      if (!hasBaseConfig) {
+        // 下載基礎配置
+        setState(() => _status = LaunchStatus.downloadingBase);
+        await _service.downloadBaseConfig(
+          'https://public-model.obs.cn-north-4.myhuaweicloud.com/config.zip'
+        );
+      } else {
+        setState(() => _progress = 0.3);
+      }
+
+      // 2. 檢查模型
+      final hasModel = await _service.checkModel(widget.modelName);
+      if (!hasModel) {
+        // 下載模型
+        setState(() => _status = LaunchStatus.downloadingModel);
+        await _service.downloadModel(widget.modelUrl);
+      } else {
+        setState(() => _progress = 0.7);
+      }
+
+      // 3. 初始化模型
+      setState(() {
+        _status = LaunchStatus.initializingModel;
+        _progress = 0.9;
+      });
+      
+      print('開始初始化模型: ${widget.modelName}');
+      await _service.initModel(widget.modelName);
+      // init_ready 事件會在 EventChannel listener 中處理
+      
+    } catch (e) {
+      print('初始化失敗: $e');
+      setState(() {
+        _status = LaunchStatus.error;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  void _retryInitialization() {
+    setState(() {
+      _status = LaunchStatus.initial;
+      _progress = 0.0;
+      _errorMessage = null;
+    });
+    _startInitialization();
+  }
+
+  void _skipToHome() {
+    if (widget.onCompleted != null) {
+      widget.onCompleted!();
+    } else {
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final launchState = ref.watch(launchProvider);
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -57,7 +193,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo 或圖標
+                // TODO Logo
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -66,7 +202,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                   ),
                   child: const Icon(
                     Icons.psychology,
-                    size: 80,
+                    size: 120,
                     color: Colors.white,
                   ),
                 ),
@@ -74,7 +210,8 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
 
                 // 標題
                 const Text(
-                  'AIOT 智慧助手',
+                  'AIOT Travel Planner',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -86,7 +223,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
 
                 // 副標題
                 Text(
-                  _getStatusMessage(launchState),
+                  _getStatusMessage(),
                   style: const TextStyle(
                     fontSize: 16,
                     color: Colors.white70,
@@ -105,22 +242,11 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                   ),
                   child: Column(
                     children: [
-                      // 詳細訊息
-                      Text(
-                        launchState.message,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-
                       // 進度條
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
-                          value: launchState.progress,
+                          value: _progress,
                           backgroundColor: Colors.white24,
                           valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                           minHeight: 8,
@@ -130,7 +256,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
 
                       // 進度百分比
                       Text(
-                        '${(launchState.progress * 100).toStringAsFixed(0)}%',
+                        '${(_progress * 100).toStringAsFixed(0)}%',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -144,7 +270,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                 const SizedBox(height: 24),
 
                 // 錯誤狀態
-                if (launchState.status == LaunchStatus.error) ...[
+                if (_status == LaunchStatus.error) ...[
                   Container(
                     padding: const EdgeInsets.all(20),
                     margin: const EdgeInsets.only(top: 16),
@@ -174,7 +300,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          launchState.errorMessage ?? '發生未知錯誤',
+                          _errorMessage ?? '發生未知錯誤',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -186,9 +312,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             ElevatedButton.icon(
-                              onPressed: () {
-                                ref.read(launchProvider.notifier).retryInitialization();
-                              },
+                              onPressed: _retryInitialization,
                               icon: const Icon(Icons.refresh),
                               label: const Text('重試'),
                               style: ElevatedButton.styleFrom(
@@ -205,9 +329,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                             ),
                             const SizedBox(width: 12),
                             OutlinedButton.icon(
-                              onPressed: () {
-                                ref.read(launchProvider.notifier).skipModelInitialization();
-                              },
+                              onPressed: _skipToHome,
                               icon: const Icon(Icons.skip_next),
                               label: const Text('跳過'),
                               style: OutlinedButton.styleFrom(
@@ -230,12 +352,10 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                 ],
 
                 // 完成狀態
-                if (launchState.status == LaunchStatus.completed) ...[
+                if (_status == LaunchStatus.completed) ...[
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: widget.onCompleted ?? () {
-                      Navigator.of(context).pushReplacementNamed('/home');
-                    },
+                    onPressed: _skipToHome,
                     icon: const Icon(Icons.arrow_forward),
                     label: const Text('開始使用'),
                     style: ElevatedButton.styleFrom(
@@ -260,8 +380,8 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
     );
   }
 
-  String _getStatusMessage(LaunchState state) {
-    switch (state.status) {
+  String _getStatusMessage() {
+    switch (_status) {
       case LaunchStatus.initial:
         return '準備初始化...';
       case LaunchStatus.initializingSdk:
@@ -281,9 +401,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
 
   @override
   void dispose() {
-    // 不在這裡清理 DUIX SDK 資源，因為可能還需要使用
-    // 只清理回調
-    DuixSdkUtil().clearCallbacks();
+    _eventSubscription?.cancel();
     super.dispose();
   }
 }

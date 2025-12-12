@@ -7,26 +7,46 @@ import android.util.Log
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 import ai.guiji.duix.sdk.client.DUIX
 import ai.guiji.duix.sdk.client.Callback
 import ai.guiji.duix.sdk.client.VirtualModelUtil
 import ai.guiji.duix.sdk.client.Constant
-import ai.guiji.duix.sdk.client.render.RenderSink
-import ai.guiji.duix.sdk.client.bean.ImageFrame
+import ai.guiji.duix.sdk.client.render.DUIXRenderer
 
 class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHandler {
 
     companion object {
         private const val TAG = "DuixSdkHandler"
         private const val CHANNEL_NAME = "com.example.duix_sdk"
+        private const val EVENT_CHANNEL_NAME = "com.example.duix_sdk/events"
     }
 
     private var duixInstance: DUIX? = null
     private var methodChannel: MethodChannel? = null
+    private var eventChannel: EventChannel? = null
+    private var eventSink: EventChannel.EventSink? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun registerWith(flutterEngine: FlutterEngine) {
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
         methodChannel?.setMethodCallHandler(this)
+        
+        eventChannel = EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL_NAME)
+        eventChannel?.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                eventSink = events
+            }
+            override fun onCancel(arguments: Any?) {
+                eventSink = null
+            }
+        })
+    }
+    
+    private fun sendEvent(data: Map<String, Any?>) {
+        mainHandler.post {
+            eventSink?.success(data)
+        }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -42,6 +62,7 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
             "pushPcm" -> handlePushPcm(call, result)
             "stopPush" -> handleStopPush(result)
             "playWavFile" -> handlePlayWavFile(call, result)
+            "playAudioBytes" -> handlePlayAudioBytes(call, result)
             "stopAudio" -> handleStopAudio(result)
             "setVolume" -> handleSetVolume(call, result)
             "release" -> handleRelease(result)
@@ -91,35 +112,34 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
 
     private fun handleDownloadBaseConfig(call: MethodCall, result: MethodChannel.Result) {
         val customUrl = call.argument<String>("url")
-        val mainHandler = Handler(Looper.getMainLooper())
 
         VirtualModelUtil.baseConfigDownload(context, object : VirtualModelUtil.ModelDownloadCallback {
             override fun onDownloadProgress(url: String, current: Long, total: Long) {
                 Log.d(TAG, "Base config download progress: $current/$total")
-                mainHandler.post {
-                    methodChannel?.invokeMethod("onDownloadProgress", hashMapOf(
-                        "url" to url,
-                        "current" to current.toInt(),
-                        "total" to total.toInt(),
-                        "isUnzip" to false
-                    ))
-                }
+                sendEvent(mapOf(
+                    "type" to "download_progress",
+                    "category" to "base_config",
+                    "current" to current,
+                    "total" to total
+                ))
             }
 
             override fun onUnzipProgress(url: String, current: Long, total: Long) {
                 Log.d(TAG, "Base config unzip progress: $current/$total")
-                mainHandler.post {
-                    methodChannel?.invokeMethod("onDownloadProgress", hashMapOf(
-                        "url" to url,
-                        "current" to current.toInt(),
-                        "total" to total.toInt(),
-                        "isUnzip" to true
-                    ))
-                }
+                sendEvent(mapOf(
+                    "type" to "unzip_progress",
+                    "category" to "base_config",
+                    "current" to current,
+                    "total" to total
+                ))
             }
 
             override fun onDownloadComplete(url: String, dir: java.io.File) {
                 Log.d(TAG, "Base config download completed: ${dir.absolutePath}")
+                sendEvent(mapOf(
+                    "type" to "download_complete",
+                    "category" to "base_config"
+                ))
                 mainHandler.post {
                     result.success(true)
                 }
@@ -127,6 +147,11 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
 
             override fun onDownloadFail(url: String, code: Int, msg: String) {
                 Log.e(TAG, "Base config download failed: $code, $msg")
+                sendEvent(mapOf(
+                    "type" to "download_fail",
+                    "category" to "base_config",
+                    "error" to msg
+                ))
                 mainHandler.post {
                     result.error("DOWNLOAD_ERROR", msg, code)
                 }
@@ -142,35 +167,33 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
             return
         }
 
-        val mainHandler = Handler(Looper.getMainLooper())
-
         VirtualModelUtil.modelDownload(context, modelUrl, object : VirtualModelUtil.ModelDownloadCallback {
             override fun onDownloadProgress(url: String, current: Long, total: Long) {
                 Log.d(TAG, "Model download progress: $current/$total")
-                mainHandler.post {
-                    methodChannel?.invokeMethod("onDownloadProgress", hashMapOf(
-                        "url" to url,
-                        "current" to current.toInt(),
-                        "total" to total.toInt(),
-                        "isUnzip" to false
-                    ))
-                }
+                sendEvent(mapOf(
+                    "type" to "download_progress",
+                    "category" to "model",
+                    "current" to current,
+                    "total" to total
+                ))
             }
 
             override fun onUnzipProgress(url: String, current: Long, total: Long) {
                 Log.d(TAG, "Model unzip progress: $current/$total")
-                mainHandler.post {
-                    methodChannel?.invokeMethod("onDownloadProgress", hashMapOf(
-                        "url" to url,
-                        "current" to current.toInt(),
-                        "total" to total.toInt(),
-                        "isUnzip" to true
-                    ))
-                }
+                sendEvent(mapOf(
+                    "type" to "unzip_progress",
+                    "category" to "model",
+                    "current" to current,
+                    "total" to total
+                ))
             }
 
             override fun onDownloadComplete(url: String, dir: java.io.File) {
                 Log.d(TAG, "Model download completed: ${dir.absolutePath}")
+                sendEvent(mapOf(
+                    "type" to "download_complete",
+                    "category" to "model"
+                ))
                 mainHandler.post {
                     result.success(true)
                 }
@@ -178,6 +201,11 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
 
             override fun onDownloadFail(url: String, code: Int, msg: String) {
                 Log.e(TAG, "Model download failed: $code, $msg")
+                sendEvent(mapOf(
+                    "type" to "download_fail",
+                    "category" to "model",
+                    "error" to msg
+                ))
                 mainHandler.post {
                     result.error("DOWNLOAD_ERROR", msg, code)
                 }
@@ -194,44 +222,46 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
         }
 
         try {
-            val mainHandler = Handler(Looper.getMainLooper())
-            
-            // 創建 RenderSink
-            val renderSink = object : RenderSink {
-                override fun onVideoFrame(imageFrame: ImageFrame) {
-                    Log.d(TAG, "Received video frame: ${imageFrame.width}x${imageFrame.height}")
-                    // 可以根據需要處理視頻幀數據
-                    // 例如：將幀數據發送到 Flutter 端或進行其他處理
-                }
-            }
-
-            // 創建 DUIX 實例
-            duixInstance = DUIX(context, modelName, renderSink, object : Callback {
-                override fun onEvent(event: String, msg: String, info: Any?) {
-                    Log.d(TAG, "DUIX event: $event, message: $msg")
-                    mainHandler.post {
-                        // 將 info 轉換為可序列化的格式
-                        val serializableInfo = when (info) {
-                            null -> null
-                            is String, is Number, is Boolean -> info
-                            else -> info.toString()  // 其他類型轉換為字符串
+            DuixViewHolder.getTextureView { textureView ->
+                mainHandler.post {
+                    try {
+                        // 創建 DUIXRenderer
+                        val renderer = DUIXRenderer(context as android.app.Activity, textureView)
+                        textureView.setRenderer(renderer)
+                        
+                        // 創建 DUIX 實例
+                        duixInstance = DUIX(context, modelName, renderer) { event, msg, info ->
+                            Log.d(TAG, "DUIX event: $event, message: $msg")
+                            
+                            val eventType = when (event) {
+                                Constant.CALLBACK_EVENT_INIT_READY -> "init_ready"
+                                Constant.CALLBACK_EVENT_INIT_ERROR -> "init_error"
+                                Constant.CALLBACK_EVENT_AUDIO_PLAY_START -> "play_start"
+                                Constant.CALLBACK_EVENT_AUDIO_PLAY_END -> "play_end"
+                                Constant.CALLBACK_EVENT_AUDIO_PLAY_ERROR -> "play_error"
+                                else -> "unknown"
+                            }
+                            
+                            sendEvent(mapOf(
+                                "type" to eventType,
+                                "message" to msg,
+                                "error" to if (event.contains("ERROR")) msg else null
+                            ))
                         }
                         
-                        methodChannel?.invokeMethod("onEvent", hashMapOf(
-                            "event" to event,
-                            "message" to msg,
-                            "info" to serializableInfo
-                        ))
+                        // 初始化模型 - 立即返回成功，實際完成狀態透過 EventChannel 通知
+                        duixInstance?.init()
+                        Log.d(TAG, "DUIX init() called, waiting for CALLBACK_EVENT_INIT_READY...")
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to initialize DUIX model", e)
+                        result.error("INIT_MODEL_ERROR", e.message, null)
                     }
                 }
-            })
-
-            // 初始化模型
-            duixInstance?.init()
-            result.success(true)
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize DUIX model", e)
-            result.error("INIT_MODEL_ERROR", e.message, null)
+            Log.e(TAG, "Failed to get texture view", e)
+            result.error("VIEW_ERROR", e.message, null)
         }
     }
 
@@ -304,6 +334,28 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
         }
     }
 
+    private fun handlePlayAudioBytes(call: MethodCall, result: MethodChannel.Result) {
+        val audioBytes = call.argument<ByteArray>("audioBytes")
+        val fileName = call.argument<String>("fileName") ?: "temp_audio.wav"
+        
+        if (audioBytes == null) {
+            result.error("INVALID_ARGUMENT", "Audio bytes cannot be null", null)
+            return
+        }
+        
+        try {
+            val tempFile = java.io.File(context.cacheDir, fileName)
+            tempFile.writeBytes(audioBytes)
+            
+            Log.d(TAG, "Audio saved to: ${tempFile.absolutePath}, size: ${audioBytes.size}")
+            duixInstance?.playAudio(tempFile.absolutePath)
+            result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to play audio bytes", e)
+            result.error("PLAY_ERROR", e.message, null)
+        }
+    }
+
     private fun handleSetVolume(call: MethodCall, result: MethodChannel.Result) {
         val volume = (call.argument<Any>("volume") as? Number)?.toDouble() ?: 1.0
 
@@ -325,5 +377,11 @@ class DuixSdkHandler(private val context: Context) : MethodChannel.MethodCallHan
             Log.e(TAG, "Failed to release DUIX SDK", e)
             result.error("RELEASE_ERROR", e.message, null)
         }
+    }
+    
+    fun release() {
+        duixInstance?.release()
+        duixInstance = null
+        eventSink = null
     }
 }
