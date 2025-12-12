@@ -1,6 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 網路權限 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- 麥克風權限 (用於語音識別) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
-        android:label="aiot_final_project_fontend"
+        android:label="AI Travel Planner"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
