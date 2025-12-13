@@ -22,7 +22,7 @@ class Log {
   static Log? _instance;
   static Logger? _logger;
 
-  static _init() {
+  static void _init() {
     _instance = Log._();
     _logger = Logger('');
     // memo: 需要看全部的 Log 就把這行註解打開
@@ -46,33 +46,33 @@ class Log {
   }
 
   static Frame? _getCallerFrame() {
-    const level = 3;
+    const int level = 3;
     // Expensive
     final frames = Trace.current(level).frames;
     return frames.isEmpty ? null : frames.first;
   }
 
-  void finest(message) => _log(Level.FINEST, message);
+  void finest(String message) => _log(Level.FINEST, message);
 
-  void finer(message) => _log(Level.FINER, message);
+  void finer(String message) => _log(Level.FINER, message);
 
-  void fine(message) => _log(Level.FINE, message);
+  void fine(String message) => _log(Level.FINE, message);
 
-  void config(message) => _log(Level.CONFIG, message);
+  void config(String message) => _log(Level.CONFIG, message);
 
-  void info(message) => _log(Level.INFO, message);
+  void info(String message) => _log(Level.INFO, message);
 
-  void warning(message) => _log(Level.WARNING, message);
+  void warning(String message) => _log(Level.WARNING, message);
 
-  void severe(message) => _log(Level.SEVERE, message);
+  void severe(String message) => _log(Level.SEVERE, message);
 
-  void shout(message) => _log(Level.SHOUT, message);
+  void shout(String message) => _log(Level.SHOUT, message);
 
-  void _log(Level level, message) {
+  void _log(Level level, String message) {
     if (kDebugMode) {
       _logger?.log(level, '${_getCallerFrame()}\n$message');
     } else {
-      _logger?.log(level, '$message');
+      _logger?.log(level, message);
     }
   }
 }
