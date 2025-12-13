@@ -1,16 +1,13 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'generate_pcm_request.dart';
+part of 'tts_request.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-GeneratePcmRequest _$GeneratePcmRequestFromJson(Map<String, dynamic> json) =>
-    GeneratePcmRequest(
-      text: json['text'] as String,
-      voice: json['voice'] as String,
-    );
+TtsRequest _$TtsRequestFromJson(Map<String, dynamic> json) =>
+    TtsRequest(text: json['text'] as String, voice: json['voice'] as String?);
 
-Map<String, dynamic> _$GeneratePcmRequestToJson(GeneratePcmRequest instance) =>
+Map<String, dynamic> _$TtsRequestToJson(TtsRequest instance) =>
     <String, dynamic>{'text': instance.text, 'voice': instance.voice};

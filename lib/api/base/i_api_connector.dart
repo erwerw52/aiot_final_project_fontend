@@ -58,8 +58,8 @@ abstract class IApiConnector {
   void printResponse(IApiMethod apiMethod) {}
 
   String _fixApiUrl(String api) {
-    if (!api.startsWith("/")) {
-      api = "/$api";
+    if (api.startsWith("/")) {
+      api = api.substring(1);
     }
     return api;
   }

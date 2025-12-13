@@ -1,3 +1,4 @@
+import 'package:aiot_final_project_fontend/repository/tts_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -17,7 +18,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-
     // 訂閱事件
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final duixService = ref.read(duixServiceProvider);
@@ -48,7 +48,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final homeState = ref.watch(homeStateProvider);
     final speechState = ref.watch(speechRecognitionProvider);
 
     return Scaffold(
@@ -61,26 +60,6 @@ class _HomePageState extends ConsumerState<HomePage> {
               layoutDirection: TextDirection.ltr,
               creationParamsCodec: StandardMessageCodec(),
             ),
-
-            // 播放狀態指示器
-            if (homeState.isPlaying)
-              const Positioned(
-                top: 16,
-                right: 16,
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.volume_up, size: 16),
-                        SizedBox(width: 4),
-                        Text('播放中'),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
 
             // 字幕顯示區域
               Positioned(
@@ -119,12 +98,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               bottom: 16,
               right: 16,
               child: FloatingActionButton(
-                onPressed: () {
-                  if (speechState.isListening) {
-                    ref.read(speechRecognitionProvider.notifier).stopListening();
-                  } else {
-                    ref.read(speechRecognitionProvider.notifier).startListening();
-                  }
+                onPressed: () async {
+                  var response = await ref.read(ttsRepositoryProvider).getTtsPcm(text: '測試語音合成');
+
+                  ref.read(duixServiceProvider).playAudioBytes(response.audioData);
                 },
                 backgroundColor: speechState.isListening ? Colors.red : Colors.blue,
                 child: Icon(

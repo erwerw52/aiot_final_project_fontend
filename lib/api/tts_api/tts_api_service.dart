@@ -1,4 +1,5 @@
-import 'package:aiot_final_project_fontend/api/tts_api/method/generate_pcm.dart';
+import 'package:aiot_final_project_fontend/api/tts_api/method/get_tts_pcm.dart';
+import 'package:aiot_final_project_fontend/api/tts_api/method/get_tts_wav.dart';
 
 class TtsApiService {
   factory TtsApiService() => _instance ?? TtsApiService._internal();
@@ -15,8 +16,8 @@ class TtsApiService {
     return _instance!;
   }
 
-  //TODO 以下實作 API 方法
+  // API 方法
+  GetTtsPcm get getTtsPcm => GetTtsPcm();
 
-  GeneratePcm get generatePcm => GeneratePcm();
-
+  GetTtsWav get getTtsWav => GetTtsWav();
 }
