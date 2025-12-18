@@ -2,8 +2,11 @@ import 'package:aiot_final_project_fontend/repository/tts_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/duix_provider.dart';
+import '../providers/speech_provider.dart';
+import '../api/tts_api/response_data/tts_response.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -13,33 +16,21 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  StreamSubscription<Map<String, dynamic>>? _eventSubscription;
+  Timer? _subtitleTimer;
+  List<TimeLineDto> _currentTimeLines = [];
+  DateTime? _playStartTime;
+  int _lastProcessedTimelineIndex = -1;
 
   @override
   void initState() {
     super.initState();
     // 訂閱事件
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final duixService = ref.read(duixServiceProvider);
-      _eventSubscription = duixService.eventStream.listen((event) {
-        final type = event['type'] as String?;
-
-        switch (type) {
-          case 'play_start':
-            ref.read(homeStateProvider.notifier).startPlaying();
-            break;
-          case 'play_end':
-            ref.read(homeStateProvider.notifier).stopPlaying();
-            break;
-          case 'play_error':
-            ref.read(homeStateProvider.notifier).stopPlaying();
-            _showSnackBar('播放錯誤: ${event["error"]}', Colors.red);
-            break;
-        }
-      });
 
       // 初始化語音識別
-      final speechAvailable = await ref.read(speechRecognitionProvider.notifier).initialize();
+      final speechAvailable = await ref
+          .read(speechRecognitionProvider.notifier)
+          .initialize();
       if (!speechAvailable) {
         _showSnackBar('語音識別功能不可用', Colors.orange);
       }
@@ -48,10 +39,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final speechState = ref.watch(speechRecognitionProvider);
-
     return Scaffold(
       body: SafeArea(
+        top: false,
         child: Stack(
           children: [
             // 數字人視圖
@@ -62,50 +52,66 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
 
             // 字幕顯示區域
-              Positioned(
-                top: 30,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        speechState.recognizedText.isEmpty ? '數字人就緒，請開始規劃您的旅遊行程' : speechState.recognizedText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
+            Positioned(
+              bottom: 100,
+              left: 0,
+              right: 0,
+              child: Consumer(
+                builder: (context, ref, child) {
+                  final subtitle = ref.watch(digitalHumanTalkTextProvider);
+                  if (subtitle.isEmpty) return const SizedBox.shrink();
+
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 1,
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                    child: Text(
+                      subtitle,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                      ),
+                    ),
+                  );
+                },
               ),
+            ),
 
             // 語音識別控制按鈕
             Positioned(
               bottom: 16,
-              right: 16,
+              right: 150,
               child: FloatingActionButton(
                 onPressed: () async {
-                  var response = await ref.read(ttsRepositoryProvider).getTtsPcm(text: '測試語音合成');
+                  /// 從 assets 拿到 wav 音頻數據
+                  var response = await ref
+                      .read(ttsRepositoryProvider)
+                      .getTtsWav(text: '測試一下喔，我現在要準備產生超過 30 個字以上，請幫我再繼續測試其他功能');
 
-                  ref.read(duixServiceProvider).playAudioBytes(response.audioData);
+                  _currentTimeLines = response.timeLines;
+
+                  await ref.read(duixServiceProvider).playAudioBytes(
+                      base64Decode(response.audioData));
+
+                  // 如果原生端沒有發送 play_start 事件，這裡手動觸發
+                  if (!ref.read(homeStateProvider).isPlaying) {
+                    debugPrint('Manual trigger play_start');
+                    _handlePlayStart();
+                  }
                 },
-                backgroundColor: speechState.isListening ? Colors.red : Colors.blue,
+                backgroundColor: Colors.blue,
                 child: Icon(
-                  speechState.isListening ? Icons.stop : Icons.mic,
+                  Icons.fiber_manual_record,
                   color: Colors.white,
                 ),
               ),
@@ -127,9 +133,59 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  void _handlePlayStart() {
+    ref.read(homeStateProvider.notifier).startPlaying();
+    _playStartTime = DateTime.now();
+    _lastProcessedTimelineIndex = -1;
+    ref.read(digitalHumanTalkTextProvider.notifier).setText('');
+    _startSubtitleTimer();
+  }
+
+  void _startSubtitleTimer() {
+    _subtitleTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (_playStartTime == null) return;
+      final elapsed = DateTime.now().difference(_playStartTime!).inMilliseconds / 1000.0;
+      
+      // 找到當前時間對應的 timeline
+      for (int i = 0; i < _currentTimeLines.length; i++) {
+        final timeline = _currentTimeLines[i];
+        if (elapsed >= timeline.start && elapsed <= timeline.end) {
+          // 如果是新的 timeline（還沒處理過）
+          if (i > _lastProcessedTimelineIndex) {
+            _lastProcessedTimelineIndex = i;
+            final currentSubtitle = ref.read(digitalHumanTalkTextProvider);
+            final newText = timeline.text;
+            
+            // 計算 append 後的長度
+            final combinedText = currentSubtitle + newText;
+            
+            if (combinedText.length > 30) {
+              // 超過 30 字，清空後使用新文字
+              ref.read(digitalHumanTalkTextProvider.notifier).setText(newText);
+            } else {
+              // 沒超過，直接 append
+              ref.read(digitalHumanTalkTextProvider.notifier).setText(combinedText);
+            }
+          }
+          break;
+        }
+      }
+    });
+  }
+
+  void _stopSubtitleTimer() {
+    _subtitleTimer?.cancel();
+    _subtitleTimer = null;
+    _playStartTime = null;
+    _lastProcessedTimelineIndex = -1;
+    _currentTimeLines = [];
+    // 播放結束時清除字幕
+    ref.read(digitalHumanTalkTextProvider.notifier).setText('');
+  }
+
   @override
   void dispose() {
-    _eventSubscription?.cancel();
+    _stopSubtitleTimer();
     ref.read(speechRecognitionProvider.notifier).cancelListening();
     super.dispose();
   }

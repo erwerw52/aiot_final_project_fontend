@@ -17,14 +17,11 @@ class GetTtsWav extends IApiTypedMethod<TtsResponse> {
 
   @override
   TtsResponse transformer(Response<dynamic> response) {
-    return TtsResponse(
-      audioData: response.data as List<int>,
-      contentType: response.headers['content-type']?.first ?? 'audio/wav',
-    );
+    return TtsResponse.fromJson(response.data);
   }
 
   @override
   bool isNeedToPrintLog() {
-    return true;
+    return false;
   }
 }

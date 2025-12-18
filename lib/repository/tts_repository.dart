@@ -19,16 +19,10 @@ class TtsRepository {
 
   static TtsRepository? _instance;
 
-  Future<TtsResponse> getTtsPcm({required String text}) async {
-    return TtsApiService.instance.getTtsPcm
-        .data(params: TtsRequest(text: text, voice: 'zh-TW-HsiaoChenNeural').toJson())
-        .onError((response) => _parseError(response))
-        .callAndTransform();
-  }
 
   Future<TtsResponse> getTtsWav({required String text}) async {
     return TtsApiService.instance.getTtsWav
-        .data(params: TtsRequest(text: text, voice: 'zh-TW-HsiaoChenNeural').toJson())
+        .data(params: TtsRequest(text: text, voice: VoiceType.female).toJson())
         .onError((response) => _parseError(response))
         .callAndTransform();
   }
