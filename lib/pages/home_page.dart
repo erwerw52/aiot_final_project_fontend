@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:aiot_final_project_fontend/api/tts_api/response_data/tts_response.dart';
 import 'package:aiot_final_project_fontend/providers/duix_provider.dart';
 import 'package:aiot_final_project_fontend/providers/speech_provider.dart';
+import 'package:aiot_final_project_fontend/repository/tts_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -129,6 +132,20 @@ class _HomePageState extends ConsumerState<HomePage>
                           return;
                         }
                         // TODO: 處理生成動畫，未來會放 loading 頁
+
+                        try{
+                          var response = await ref.read(ttsRepositoryProvider).getTtsWav(text: recognizedText);
+
+                          _currentTimeLines = response.timeLines;
+
+                          await ref
+                              .read(duixServiceProvider)
+                              .playAudioBytes(base64Decode(response.audioData));
+
+                          _handlePlayStart();
+                        }catch(e){
+                          print(e.toString());
+                        }
                       }
                     },
                     backgroundColor: speechState.isListening ? Colors.red : Colors.blue,
@@ -159,65 +176,64 @@ class _HomePageState extends ConsumerState<HomePage>
     );
   }
 
-  // TODO 等 server 資料回來再處理
-  // void _handlePlayStart() {
-  //   ref.read(isPlayingProvider.notifier).startPlaying();
-  //   var isPlaying = ref.read(isPlayingProvider);
-  //   print('測試測試 :: $isPlaying');
-  //   _playStartTime = DateTime.now();
-  //   _lastProcessedTimelineIndex = -1;
-  //   ref.read(digitalHumanTalkTextProvider.notifier).setText('');
-  //   _startSubtitleTimer();
-  // }
+  void _handlePlayStart() {
+    ref.read(isPlayingProvider.notifier).startPlaying();
+    var isPlaying = ref.read(isPlayingProvider);
+    print('測試測試 :: $isPlaying');
+    _playStartTime = DateTime.now();
+    _lastProcessedTimelineIndex = -1;
+    ref.read(digitalHumanTalkTextProvider.notifier).setText('');
+    _startSubtitleTimer();
+  }
 
   void _handlePlayStop() {
     ref.read(isPlayingProvider.notifier).stopPlaying();
     _stopSubtitleTimer();
   }
-  // TODO 等 server 資料回來再處理
-  // void _startSubtitleTimer() {
-  //   _subtitleTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-  //     if (_playStartTime == null) return;
-  //     final elapsed =
-  //         DateTime.now().difference(_playStartTime!).inMilliseconds / 1000.0;
-  //
-  //     // 檢查是否已超過所有時間軸 + 3 秒
-  //     if (_currentTimeLines.isNotEmpty) {
-  //       final lastTimeline = _currentTimeLines.last;
-  //       if (elapsed > lastTimeline.end + 3.0) {
-  //         _handlePlayStop(); // 自動停止
-  //         return;
-  //       }
-  //     }
-  //
-  //     // 找到當前時間對應的 timeline
-  //     for (int i = 0; i < _currentTimeLines.length; i++) {
-  //       final timeline = _currentTimeLines[i];
-  //       if (elapsed >= timeline.start && elapsed <= timeline.end) {
-  //         // 如果是新的 timeline（還沒處理過）
-  //         if (i > _lastProcessedTimelineIndex) {
-  //           _lastProcessedTimelineIndex = i;
-  //           final currentSubtitle = ref.read(digitalHumanTalkTextProvider);
-  //           final newText = timeline.text;
-  //
-  //           // 計算 append 後的長度
-  //           final combinedText = currentSubtitle + newText;
-  //
-  //           if (combinedText.length > 30) {
-  //             // 超過 30 字，清空後使用新文字
-  //             ref.read(digitalHumanTalkTextProvider.notifier).setText(newText);
-  //           } else {
-  //             // 沒超過，直接 append
-  //             ref
-  //                 .read(digitalHumanTalkTextProvider.notifier)
-  //                 .setText(combinedText);
-  //           }
-  //         }
-  //         break;
-  //       }
-  //     }
-  //   });
-  // }
+
+  void _startSubtitleTimer() {
+    _subtitleTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (_playStartTime == null) return;
+      final elapsed =
+          DateTime.now().difference(_playStartTime!).inMilliseconds / 1000.0;
+
+      // 檢查是否已超過所有時間軸 + 3 秒
+      if (_currentTimeLines.isNotEmpty) {
+        final lastTimeline = _currentTimeLines.last;
+        if (elapsed > lastTimeline.end + 3.0) {
+          _handlePlayStop(); // 自動停止
+          return;
+        }
+      }
+
+      // 找到當前時間對應的 timeline
+      for (int i = 0; i < _currentTimeLines.length; i++) {
+        final timeline = _currentTimeLines[i];
+        if (elapsed >= timeline.start && elapsed <= timeline.end) {
+          // 如果是新的 timeline（還沒處理過）
+          if (i > _lastProcessedTimelineIndex) {
+            _lastProcessedTimelineIndex = i;
+            final currentSubtitle = ref.read(digitalHumanTalkTextProvider);
+            final newText = timeline.text;
+
+            // 計算 append 後的長度
+            final combinedText = currentSubtitle + newText;
+
+            if (combinedText.length > 30) {
+              // 超過 30 字，清空後使用新文字
+              ref.read(digitalHumanTalkTextProvider.notifier).setText(newText);
+            } else {
+              // 沒超過，直接 append
+              ref
+                  .read(digitalHumanTalkTextProvider.notifier)
+                  .setText(combinedText);
+            }
+          }
+          break;
+        }
+      }
+    });
+  }
 
   void _stopSubtitleTimer() {
     _subtitleTimer?.cancel();
