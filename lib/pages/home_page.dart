@@ -42,7 +42,7 @@ class _HomePageState extends ConsumerState<HomePage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // 背景執行中，都要關掉語音
+    // 背景執行中，關掉語音
     if (state == AppLifecycleState.inactive) {
       bool isPlaying = ref.read(isPlayingProvider);
       print('測試測試 ::: $isPlaying');
@@ -163,6 +163,15 @@ class _HomePageState extends ConsumerState<HomePage>
       if (_playStartTime == null) return;
       final elapsed =
           DateTime.now().difference(_playStartTime!).inMilliseconds / 1000.0;
+
+      // 檢查是否已超過所有時間軸 + 3 秒
+      if (_currentTimeLines.isNotEmpty) {
+        final lastTimeline = _currentTimeLines.last;
+        if (elapsed > lastTimeline.end + 3.0) {
+          _handlePlayStop();  // 自動停止
+          return;
+        }
+      }
 
       // 找到當前時間對應的 timeline
       for (int i = 0; i < _currentTimeLines.length; i++) {
