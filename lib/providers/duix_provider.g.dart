@@ -50,52 +50,51 @@ final class DuixServiceProvider
 
 String _$duixServiceHash() => r'8cb970365937cae291c95927729a25d60cc13852';
 
-@ProviderFor(HomeState)
-const homeStateProvider = HomeStateProvider._();
+@ProviderFor(IsPlaying)
+const isPlayingProvider = IsPlayingProvider._();
 
-final class HomeStateProvider
-    extends $NotifierProvider<HomeState, HomeStateData> {
-  const HomeStateProvider._()
+final class IsPlayingProvider extends $NotifierProvider<IsPlaying, bool> {
+  const IsPlayingProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'homeStateProvider',
-        isAutoDispose: true,
+        name: r'isPlayingProvider',
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$homeStateHash();
+  String debugGetCreateSourceHash() => _$isPlayingHash();
 
   @$internal
   @override
-  HomeState create() => HomeState();
+  IsPlaying create() => IsPlaying();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(HomeStateData value) {
+  Override overrideWithValue(bool value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<HomeStateData>(value),
+      providerOverride: $SyncValueProvider<bool>(value),
     );
   }
 }
 
-String _$homeStateHash() => r'20f012a0295d23108385f535b6e6a29b3e1a3485';
+String _$isPlayingHash() => r'9e7cef93d9c561744c34e066d91842711806ccae';
 
-abstract class _$HomeState extends $Notifier<HomeStateData> {
-  HomeStateData build();
+abstract class _$IsPlaying extends $Notifier<bool> {
+  bool build();
   @$mustCallSuper
   @override
   void runBuild() {
     final created = build();
-    final ref = this.ref as $Ref<HomeStateData, HomeStateData>;
+    final ref = this.ref as $Ref<bool, bool>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<HomeStateData, HomeStateData>,
-              HomeStateData,
+              AnyNotifier<bool, bool>,
+              bool,
               Object?,
               Object?
             >;

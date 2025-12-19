@@ -15,7 +15,8 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
   Timer? _subtitleTimer;
   List<TimeLineDto> _currentTimeLines = [];
   DateTime? _playStartTime;
@@ -26,7 +27,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     // 訂閱事件
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-
       // 初始化語音識別
       final speechAvailable = await ref
           .read(speechRecognitionProvider.notifier)
@@ -35,6 +35,22 @@ class _HomePageState extends ConsumerState<HomePage> {
         _showSnackBar('語音識別功能不可用', Colors.orange);
       }
     });
+
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 背景執行中，都要關掉語音
+    if (state == AppLifecycleState.inactive) {
+      bool isPlaying = ref.read(isPlayingProvider);
+      print('測試測試 ::: $isPlaying');
+      if (isPlaying) {
+        ref.read(duixServiceProvider).stopAudio();
+        _handlePlayStop();
+      }
+    }
   }
 
   @override
@@ -100,20 +116,14 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                   _currentTimeLines = response.timeLines;
 
-                  await ref.read(duixServiceProvider).playAudioBytes(
-                      base64Decode(response.audioData));
+                  await ref
+                      .read(duixServiceProvider)
+                      .playAudioBytes(base64Decode(response.audioData));
 
-                  // 如果原生端沒有發送 play_start 事件，這裡手動觸發
-                  if (!ref.read(homeStateProvider).isPlaying) {
-                    debugPrint('Manual trigger play_start');
-                    _handlePlayStart();
-                  }
+                  _handlePlayStart();
                 },
                 backgroundColor: Colors.blue,
-                child: Icon(
-                  Icons.fiber_manual_record,
-                  color: Colors.white,
-                ),
+                child: Icon(Icons.fiber_manual_record, color: Colors.white),
               ),
             ),
           ],
@@ -134,18 +144,26 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _handlePlayStart() {
-    ref.read(homeStateProvider.notifier).startPlaying();
+    ref.read(isPlayingProvider.notifier).startPlaying();
+    var isPlaying = ref.read(isPlayingProvider);
+    print('測試測試 :: $isPlaying');
     _playStartTime = DateTime.now();
     _lastProcessedTimelineIndex = -1;
     ref.read(digitalHumanTalkTextProvider.notifier).setText('');
     _startSubtitleTimer();
   }
 
+  void _handlePlayStop() {
+    ref.read(isPlayingProvider.notifier).stopPlaying();
+    _stopSubtitleTimer();
+  }
+
   void _startSubtitleTimer() {
     _subtitleTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       if (_playStartTime == null) return;
-      final elapsed = DateTime.now().difference(_playStartTime!).inMilliseconds / 1000.0;
-      
+      final elapsed =
+          DateTime.now().difference(_playStartTime!).inMilliseconds / 1000.0;
+
       // 找到當前時間對應的 timeline
       for (int i = 0; i < _currentTimeLines.length; i++) {
         final timeline = _currentTimeLines[i];
@@ -155,16 +173,18 @@ class _HomePageState extends ConsumerState<HomePage> {
             _lastProcessedTimelineIndex = i;
             final currentSubtitle = ref.read(digitalHumanTalkTextProvider);
             final newText = timeline.text;
-            
+
             // 計算 append 後的長度
             final combinedText = currentSubtitle + newText;
-            
+
             if (combinedText.length > 30) {
               // 超過 30 字，清空後使用新文字
               ref.read(digitalHumanTalkTextProvider.notifier).setText(newText);
             } else {
               // 沒超過，直接 append
-              ref.read(digitalHumanTalkTextProvider.notifier).setText(combinedText);
+              ref
+                  .read(digitalHumanTalkTextProvider.notifier)
+                  .setText(combinedText);
             }
           }
           break;
