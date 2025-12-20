@@ -1,9 +1,9 @@
 import 'dart:convert';
-
 import 'package:aiot_final_project_fontend/api/tts_api/response_data/tts_response.dart';
 import 'package:aiot_final_project_fontend/providers/duix_provider.dart';
 import 'package:aiot_final_project_fontend/providers/speech_provider.dart';
 import 'package:aiot_final_project_fontend/repository/tts_repository.dart';
+import 'package:aiot_final_project_fontend/utils/debug/log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -22,6 +22,8 @@ class _HomePageState extends ConsumerState<HomePage>
   List<TimeLineDto> _currentTimeLines = [];
   DateTime? _playStartTime;
   int _lastProcessedTimelineIndex = -1;
+  String _originalText = '';  // 儲存完整的原始文字(包含標點)
+  int _originalTextPos = 0;  // 當前處理到 originalText 的位置
 
   @override
   void initState() {
@@ -142,7 +144,7 @@ class _HomePageState extends ConsumerState<HomePage>
                               .read(duixServiceProvider)
                               .playAudioBytes(base64Decode(response.audioData));
 
-                          _handlePlayStart();
+                          _handlePlayStart(response);
                         }catch(e){
                           print(e.toString());
                         }
@@ -176,13 +178,16 @@ class _HomePageState extends ConsumerState<HomePage>
     );
   }
 
-  void _handlePlayStart() {
+  void _handlePlayStart(TtsResponse response) {
     ref.read(isPlayingProvider.notifier).startPlaying();
-    var isPlaying = ref.read(isPlayingProvider);
-    print('測試測試 :: $isPlaying');
     _playStartTime = DateTime.now();
     _lastProcessedTimelineIndex = -1;
     ref.read(digitalHumanTalkTextProvider.notifier).setText('');
+    
+    // 保存原始文字用於標點處理
+    _originalText = response.originalText;
+    _originalTextPos = 0;  // 從頭開始順序遍歷
+    
     _startSubtitleTimer();
   }
 
@@ -214,19 +219,71 @@ class _HomePageState extends ConsumerState<HomePage>
           if (i > _lastProcessedTimelineIndex) {
             _lastProcessedTimelineIndex = i;
             final currentSubtitle = ref.read(digitalHumanTalkTextProvider);
-            final newText = timeline.text;
+            final timelineText = timeline.text;
+            
+            String textToAppend = timelineText;
+            // 包含中文和英文所有標點符號
+            const punctuations = '。，、；：！？""''《》「」【】（）…—,.;:!?\'"()[]{}~`';
 
-            // 計算 append 後的長度
-            final combinedText = currentSubtitle + newText;
-
-            if (combinedText.length > 30) {
-              // 超過 30 字，清空後使用新文字
-              ref.read(digitalHumanTalkTextProvider.notifier).setText(newText);
+            // 從當前位置順序匹配
+            int matchStart = _originalTextPos;
+            int matchedChars = 0;
+            
+            // 跳過開頭的標點符號
+            while (matchStart < _originalText.length && 
+                   punctuations.contains(_originalText[matchStart])) {
+              matchStart++;
+            }
+            
+            // 逐字匹配 timeline.text
+            int currentPos = matchStart;
+            for (int j = 0; j < timelineText.length; j++) {
+              // 跳過中間的標點
+              while (currentPos < _originalText.length && 
+                     punctuations.contains(_originalText[currentPos])) {
+                currentPos++;
+              }
+              
+              // 匹配當前字符
+              if (currentPos < _originalText.length && 
+                  _originalText[currentPos] == timelineText[j]) {
+                matchedChars++;
+                currentPos++;
+              } else {
+                // 不匹配就中斷
+                break;
+              }
+            }
+            
+            // 檢查是否完全匹配
+            if (matchedChars == timelineText.length) {
+              // 檢查後面緊跟的標點符號
+              if (currentPos < _originalText.length && 
+                  punctuations.contains(_originalText[currentPos])) {
+                textToAppend = timelineText + _originalText[currentPos];
+                currentPos++;  // 把標點也消耗掉
+              }
+              
+              // 更新全局位置指針
+              _originalTextPos = currentPos;
             } else {
-              // 沒超過，直接 append
-              ref
-                  .read(digitalHumanTalkTextProvider.notifier)
-                  .setText(combinedText);
+              // 匹配失敗,記錄詳細信息
+              final previewStart = _originalTextPos.clamp(0, _originalText.length);
+              final previewEnd = (_originalTextPos + 20).clamp(0, _originalText.length);
+              final preview = _originalText.substring(previewStart, previewEnd);
+              Log.get().warning('⚠️ 字幕匹配失敗 at pos $_originalTextPos: timeline="$timelineText", matched=$matchedChars/${timelineText.length}');
+              Log.get().warning('   原文預覽(pos $_originalTextPos 起): "$preview"');
+              if (currentPos < _originalText.length) {
+                Log.get().warning('   當前字符: "${_originalText[currentPos]}" vs 期望: "${timelineText[matchedChars]}"');
+              }
+            }
+            
+            // 檢查長度並更新字幕
+            final combinedText = currentSubtitle + textToAppend;
+            if (combinedText.length > 30) {
+              ref.read(digitalHumanTalkTextProvider.notifier).setText(textToAppend);
+            } else {
+              ref.read(digitalHumanTalkTextProvider.notifier).setText(combinedText);
             }
           }
           break;
@@ -241,6 +298,11 @@ class _HomePageState extends ConsumerState<HomePage>
     _playStartTime = null;
     _lastProcessedTimelineIndex = -1;
     _currentTimeLines = [];
+    
+    // 清理標點處理相關變數
+    _originalText = '';
+    _originalTextPos = 0;
+    
     // 播放結束時清除字幕
     ref.read(digitalHumanTalkTextProvider.notifier).setText('');
   }

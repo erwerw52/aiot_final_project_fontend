@@ -41,7 +41,7 @@ final class SpeechRecognitionProvider
   }
 }
 
-String _$speechRecognitionHash() => r'6f837ed427de8d3bebb1d06b576e072356b92f96';
+String _$speechRecognitionHash() => r'72b4f112c38fa6a0c7c8e0bebd69834872e1fb4d';
 
 abstract class _$SpeechRecognition extends $Notifier<SpeechState> {
   SpeechState build();
@@ -99,7 +99,7 @@ final class DigitalHumanTalkTextProvider
 }
 
 String _$digitalHumanTalkTextHash() =>
-    r'053a07c02ea6ad27e81a1472e18deef92e9d0977';
+    r'232b7cb1445407ca4d0e070c4144cd0146d4fe50';
 
 /// 數字人字幕
 

@@ -92,7 +92,7 @@ class SpeechRecognition extends _$SpeechRecognition {
 class DigitalHumanTalkText extends _$DigitalHumanTalkText {
   @override
    String build() {
-    return '數位助理已就位!! 請開始規劃您的旅遊行程';
+    return '數位助理已就位!! 請說出您的旅遊地點與需求吧～';
   }
 
   void setText(String text){

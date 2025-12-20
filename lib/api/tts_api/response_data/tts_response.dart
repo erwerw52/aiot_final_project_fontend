@@ -6,8 +6,15 @@ part 'tts_response.g.dart';
 class TtsResponse {
   final String audioData;
   final List<TimeLineDto> timeLines;
+  final String originalText;
+  final String url;
 
-  TtsResponse({required this.audioData, required this.timeLines});
+  TtsResponse({
+    required this.audioData,
+    required this.timeLines,
+    required this.originalText,
+    required this.url,
+  });
 
   factory TtsResponse.fromJson(Map<String, dynamic> json) =>
       _$TtsResponseFromJson(json);
@@ -16,7 +23,7 @@ class TtsResponse {
 }
 
 @JsonSerializable()
-class TimeLineDto{
+class TimeLineDto {
   final String text;
   final double start;
   final double end;
@@ -25,5 +32,6 @@ class TimeLineDto{
 
   factory TimeLineDto.fromJson(Map<String, dynamic> json) =>
       _$TimeLineDtoFromJson(json);
+
   Map<String, dynamic> toJson() => _$TimeLineDtoToJson(this);
 }

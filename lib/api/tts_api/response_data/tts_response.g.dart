@@ -11,12 +11,16 @@ TtsResponse _$TtsResponseFromJson(Map<String, dynamic> json) => TtsResponse(
   timeLines: (json['timeLines'] as List<dynamic>)
       .map((e) => TimeLineDto.fromJson(e as Map<String, dynamic>))
       .toList(),
+  originalText: json['originalText'] as String,
+  url: json['url'] as String,
 );
 
 Map<String, dynamic> _$TtsResponseToJson(TtsResponse instance) =>
     <String, dynamic>{
       'audioData': instance.audioData,
       'timeLines': instance.timeLines,
+      'originalText': instance.originalText,
+      'url': instance.url,
     };
 
 TimeLineDto _$TimeLineDtoFromJson(Map<String, dynamic> json) => TimeLineDto(
