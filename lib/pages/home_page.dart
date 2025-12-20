@@ -257,23 +257,15 @@ class _HomePageState extends ConsumerState<HomePage>
             
             // 檢查是否完全匹配
             if (matchedChars == timelineText.length) {
-              // 追加所有連續的標點符號
-              while (currentPos < _originalText.length && 
-                     punctuations.contains(_originalText[currentPos])) {
-                textToAppend += _originalText[currentPos];
-                currentPos++;
-              }
-              
-              // Debug: 如果有標點則輸出
-              if (textToAppend != timelineText) {
-                debugPrint('  ✅ 找到標點: "${textToAppend.substring(timelineText.length)}" (${textToAppend.length - timelineText.length}個)');
-              } else {
-                debugPrint('  ℹ️ 後面沒有標點');
+              // 檢查後面緊跟的標點符號
+              if (currentPos < _originalText.length && 
+                  punctuations.contains(_originalText[currentPos])) {
+                textToAppend = timelineText + _originalText[currentPos];
+                currentPos++;  // 把標點也消耗掉
               }
               
               // 更新全局位置指針
               _originalTextPos = currentPos;
-              debugPrint('  📍 更新pos到: $_originalTextPos, 顯示文字: "$textToAppend"');
             } else {
               // 匹配失敗,記錄詳細信息
               final previewStart = _originalTextPos.clamp(0, _originalText.length);
