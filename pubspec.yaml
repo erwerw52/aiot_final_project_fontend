@@ -58,6 +58,7 @@ dev_dependencies:
   riverpod_generator: ^3.0.3
   build_runner: ^2.10.4
   flutter_launcher_icons: ^0.14.4
+  flutter_gen_runner: ^5.12.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -71,9 +72,10 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/
+    - assets/images/icon/
+    - assets/wav/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -116,3 +118,18 @@ flutter_launcher_icons:
   # 移除舊的啟動器圖標
   remove_alpha_ios: true
   remove_alpha_android: true
+
+flutter_gen:
+  output: lib/gen/
+  line_length: 80
+
+  integrations:
+    flutter_svg: false
+    rive: false
+    lottie: false
+
+  assets:
+    enabled: true
+    outputs:
+      package_parameter_enabled: false
+      style: dot-delimiter

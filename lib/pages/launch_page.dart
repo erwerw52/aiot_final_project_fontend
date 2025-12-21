@@ -1,3 +1,4 @@
+import 'package:aiot_final_project_fontend/gen/assets.gen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
@@ -81,6 +82,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
               LaunchStatus.completed,
               progress: 1.0,
             );
+            // _skipToHome();
             break;
 
           case 'init_error':
@@ -108,8 +110,8 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
             colors: [
               Color(0xFF667EEA),
               Color(0xFF764BA2),
@@ -120,49 +122,38 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // TODO Logo
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(2),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.psychology,
-                  size: 120,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // 標題
               const Text(
-                'AIOT Travel Planner',
+                'AiTP',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                   letterSpacing: 1.2,
+                  height: 1.0
                 ),
               ),
-              const SizedBox(height: 12),
 
-              // 副標題
-              Text(
-                _getStatusMessage(launchState.status),
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w500,
-                ),
+              SizedBox(height: 5,),
+
+              const Text(
+                'AI Travel Planner',
                 textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.white,
+                  letterSpacing: 1.2,
+                    height: 1.0
+                ),
               ),
-              const SizedBox(height: 48),
+
+              Container(
+                child: Assets.images.icon.loadingIcon.image(fit: BoxFit.contain, height: 320),
+              ),
 
               // 進度容器
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(1),
                   borderRadius: BorderRadius.circular(16),
@@ -179,8 +170,19 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                         minHeight: 8,
                       ),
                     ),
-                    const SizedBox(height: 12),
-
+                    const SizedBox(height: 5),
+                    // 副標題
+                    Text(
+                      _getStatusMessage(launchState.status),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                          height: 1.0
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 5),
                     // 進度百分比
                     Text(
                       '${(launchState.progress * 100).toStringAsFixed(0)}%',
@@ -188,6 +190,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
+                          height: 1.0
                       ),
                     ),
                   ],
@@ -273,28 +276,6 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                         ],
                       ),
                     ],
-                  ),
-                ),
-              ],
-
-              // 完成狀態
-              if (launchState.status == LaunchStatus.completed) ...[
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _skipToHome,
-                  icon: const Icon(Icons.arrow_forward),
-                  label: const Text('開始使用'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF667EEA),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 8,
                   ),
                 ),
               ],
