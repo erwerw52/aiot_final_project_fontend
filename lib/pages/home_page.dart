@@ -77,16 +77,37 @@ class _HomePageState extends ConsumerState<HomePage>
         top: false,
         child: Stack(
           children: [
+            Container(color: Color(0xFF7461a3)),
             // 數字人視圖
-            const AndroidView(
-              viewType: 'duix_platform_view',
-              layoutDirection: TextDirection.ltr,
-              creationParamsCodec: StandardMessageCodec(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 70, 0, 90),
+              child: const AndroidView(
+                viewType: 'duix_platform_view',
+                layoutDirection: TextDirection.ltr,
+                creationParamsCodec: StandardMessageCodec(),
+              ),
+            ),
+
+            Positioned(
+              top: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Text(
+                  'Plan your next trip with AiTP',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    height: 1.0,
+                  ),
+                ),
+              ),
             ),
 
             // 字幕顯示區域
             Positioned(
-              bottom: 90,
+              bottom: 110,
               left: 0,
               right: 0,
               child: Consumer(
@@ -127,7 +148,7 @@ class _HomePageState extends ConsumerState<HomePage>
                 final speechState = ref.watch(speechRecognitionProvider);
 
                 return Positioned(
-                  bottom: 20,
+                  bottom: 12,
                   left: 16,
                   right: 16,
                   child: Container(
@@ -156,9 +177,13 @@ class _HomePageState extends ConsumerState<HomePage>
                                 .read(chatInputProvider.notifier)
                                 .setText(value),
                             decoration: InputDecoration(
+                              hintStyle: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
                               hintText: speechState.isListening
-                                  ? '正在聆聽...'
-                                  : '輸入文字或使用語音...',
+                                  ? 'Listening...'
+                                  : 'Ask me anything...',
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                 vertical: 12,
@@ -238,20 +263,18 @@ class _HomePageState extends ConsumerState<HomePage>
                           },
                           child: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: speechState.isListening
-                                  ? Colors.red
-                                  : Colors.blue,
-                              shape: BoxShape.circle,
-                            ),
                             child: Icon(
                               chatInputText.isNotEmpty
                                   ? Icons.send_rounded
                                   : (speechState.isListening
                                         ? Icons.stop_rounded
                                         : Icons.mic_rounded),
-                              color: Colors.white,
-                              size: 24,
+                              color: chatInputText.isNotEmpty
+                                  ? Color(0xFF7461a3)
+                                  : (speechState.isListening)
+                                  ? Colors.red
+                                  : Color(0xFF7461a3),
+                              size: 27,
                             ),
                           ),
                         ),
