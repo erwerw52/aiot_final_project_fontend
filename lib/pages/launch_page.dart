@@ -82,7 +82,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
               LaunchStatus.completed,
               progress: 1.0,
             );
-            // _skipToHome();
+            _skipToHome();
             break;
 
           case 'init_error':
@@ -147,9 +147,13 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                 ),
               ),
 
+              SizedBox(height: 35,),
+
               Container(
-                child: Assets.images.icon.loadingIcon.image(fit: BoxFit.contain, height: 320),
+                child: Assets.images.icon.loadingIcon.image(fit: BoxFit.contain, height: 200),
               ),
+
+              SizedBox(height: 40,),
 
               // 進度容器
               Container(
@@ -175,7 +179,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                     Text(
                       _getStatusMessage(launchState.status),
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         color: Colors.white70,
                         fontWeight: FontWeight.bold,
                           height: 1.0
@@ -187,7 +191,7 @@ class _LaunchPageState extends ConsumerState<LaunchPage> {
                     Text(
                       '${(launchState.progress * 100).toStringAsFixed(0)}%',
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                           height: 1.0
