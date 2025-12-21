@@ -57,6 +57,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   riverpod_generator: ^3.0.3
   build_runner: ^2.10.4
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -99,3 +100,19 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/icon/app_icon.png"
+  # 如果需要不同的圖標可以分別指定：
+  # image_path_android: "assets/icon/android_icon.png"
+  # image_path_ios: "assets/icon/ios_icon.png"
+  
+  # Android 自適應圖標（選用）
+  # adaptive_icon_background: "#ffffff"
+  # adaptive_icon_foreground: "assets/icon/foreground.png"
+  
+  # 移除舊的啟動器圖標
+  remove_alpha_ios: true
+  remove_alpha_android: true
