@@ -262,7 +262,6 @@ class _HomePageState extends ConsumerState<HomePage>
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.all(10),
                             child: Icon(
                               chatInputText.isNotEmpty
                                   ? Icons.send_rounded
@@ -274,7 +273,7 @@ class _HomePageState extends ConsumerState<HomePage>
                                   : (speechState.isListening)
                                   ? Colors.red
                                   : Color(0xFF7461a3),
-                              size: 27,
+                              size: 30,
                             ),
                           ),
                         ),
