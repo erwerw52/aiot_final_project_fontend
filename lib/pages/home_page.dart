@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:aiot_final_project_fontend/api/tts_api/response_data/tts_response.dart';
+import 'package:aiot_final_project_fontend/providers/chat_input_provider.dart';
 import 'package:aiot_final_project_fontend/providers/duix_provider.dart';
 import 'package:aiot_final_project_fontend/providers/speech_provider.dart';
 import 'package:aiot_final_project_fontend/repository/tts_repository.dart';
@@ -18,12 +19,13 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage>
     with WidgetsBindingObserver {
+  final TextEditingController _textController = TextEditingController();
   Timer? _subtitleTimer;
   List<TimeLineDto> _currentTimeLines = [];
   DateTime? _playStartTime;
   int _lastProcessedTimelineIndex = -1;
-  String _originalText = '';  // 儲存完整的原始文字(包含標點)
-  int _originalTextPos = 0;  // 當前處理到 originalText 的位置
+  String _originalText = ''; // 儲存完整的原始文字(包含標點)
+  int _originalTextPos = 0; // 當前處理到 originalText 的位置
 
   @override
   void initState() {
@@ -58,6 +60,18 @@ class _HomePageState extends ConsumerState<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    // 監聽語音辨識結果，並同步到輸入框
+    ref.listen(speechRecognitionProvider, (previous, next) {
+      if (next.recognizedText.isNotEmpty &&
+          next.recognizedText != previous?.recognizedText) {
+        ref.read(chatInputProvider.notifier).setText(next.recognizedText);
+        _textController.text = next.recognizedText;
+        _textController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _textController.text.length),
+        );
+      }
+    });
+
     return Scaffold(
       body: SafeArea(
         top: false,
@@ -72,7 +86,7 @@ class _HomePageState extends ConsumerState<HomePage>
 
             // 字幕顯示區域
             Positioned(
-              bottom: 100,
+              bottom: 90,
               left: 0,
               right: 0,
               child: Consumer(
@@ -109,53 +123,139 @@ class _HomePageState extends ConsumerState<HomePage>
             // 語音識別控制按鈕
             Consumer(
               builder: (context, ref, widget) {
-                var speechState = ref.watch(speechRecognitionProvider);
+                final chatInputText = ref.watch(chatInputProvider);
+                final speechState = ref.watch(speechRecognitionProvider);
+
                 return Positioned(
-                  bottom: 16,
-                  right: 150,
-                  child: FloatingActionButton(
-                    onPressed: () async {
-                      if (!speechState.isListening) {
-                        // 1. 開始語音識別
-                        ref.read(speechRecognitionProvider.notifier).startListening();
-                      } else {
-                        // 2. 停止語音識別
-                        await ref.read(speechRecognitionProvider.notifier).stopListening();
-                        
-                        // 3. 獲取識別結果
-                        final finalState = ref.read(speechRecognitionProvider);
-                        final recognizedText = finalState.recognizedText;
+                  bottom: 20,
+                  left: 16,
+                  right: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // 文字輸入框
+                        Expanded(
+                          child: TextField(
+                            controller: _textController,
+                            onChanged: (value) => ref
+                                .read(chatInputProvider.notifier)
+                                .setText(value),
+                            decoration: InputDecoration(
+                              hintText: speechState.isListening
+                                  ? '正在聆聽...'
+                                  : '輸入文字或使用語音...',
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                              ),
+                            ),
+                            maxLines: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // 分隔線
+                        Container(
+                          width: 1,
+                          height: 24,
+                          color: Colors.grey.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(width: 8),
+                        // 功能按鈕
+                        GestureDetector(
+                          onTap: () async {
+                            // 如果有文字，直接走發送流程
+                            if (chatInputText.isNotEmpty) {
+                              final textToSend = chatInputText;
 
-                        debugPrint('語音識別結果: $recognizedText');
+                              // 清空輸入框
+                              ref.read(chatInputProvider.notifier).clearText();
+                              _textController.clear();
 
-                        // 4. 檢查是否有識別到文字
-                        if (recognizedText.isEmpty) {
-                          _showSnackBar('未識別到任何內容', Colors.orange);
-                          return;
-                        }
-                        // TODO: 處理生成動畫，未來會放 loading 頁
+                              // 隱藏鍵盤
+                              FocusScope.of(context).unfocus();
 
-                        try{
-                          var response = await ref.read(ttsRepositoryProvider).getTtsWav(text: recognizedText);
+                              try {
+                                var response = await ref
+                                    .read(ttsRepositoryProvider)
+                                    .getTtsWav(text: textToSend);
 
-                          _currentTimeLines = response.timeLines;
+                                _currentTimeLines = response.timeLines;
 
-                          await ref
-                              .read(duixServiceProvider)
-                              .playAudioBytes(base64Decode(response.audioData));
+                                await ref
+                                    .read(duixServiceProvider)
+                                    .playAudioBytes(
+                                      base64Decode(response.audioData),
+                                    );
 
-                          _handlePlayStart(response);
-                        }catch(e){
-                          print(e.toString());
-                        }
-                      }
-                    },
-                    backgroundColor: speechState.isListening ? Colors.red : Colors.blue,
-                    child: Icon(
-                      speechState.isListening
-                          ? Icons.stop_circle_rounded
-                          : Icons.mic_rounded,
-                      color: Colors.white,
+                                _handlePlayStart(response);
+                              } catch (e) {
+                                print(e.toString());
+                              }
+
+                              return;
+                            }
+
+                            // 如果沒文字，處理語音辨識啟動/停止
+                            if (speechState.isListening) {
+                              // 停止並等待最後結果
+                              await ref
+                                  .read(speechRecognitionProvider.notifier)
+                                  .stopListening();
+
+                              final recognized = ref
+                                  .read(speechRecognitionProvider)
+                                  .recognizedText;
+
+                              if (recognized.isEmpty) {
+                                _showSnackBar('未識別到任何內容', Colors.orange);
+                                return;
+                              }
+                            } else {
+                              // 開始聆聽，直接返回，不立即顯示未識別的提示
+                              print('[HomePage] startListening invoked');
+                              ref
+                                  .read(speechRecognitionProvider.notifier)
+                                  .startListening();
+                              // 隱藏鍵盤
+                              FocusScope.of(context).unfocus();
+                              return;
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: speechState.isListening
+                                  ? Colors.red
+                                  : Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              chatInputText.isNotEmpty
+                                  ? Icons.send_rounded
+                                  : (speechState.isListening
+                                        ? Icons.stop_rounded
+                                        : Icons.mic_rounded),
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -183,11 +283,11 @@ class _HomePageState extends ConsumerState<HomePage>
     _playStartTime = DateTime.now();
     _lastProcessedTimelineIndex = -1;
     ref.read(digitalHumanTalkTextProvider.notifier).setText('');
-    
+
     // 保存原始文字用於標點處理
     _originalText = response.originalText;
-    _originalTextPos = 0;  // 從頭開始順序遍歷
-    
+    _originalTextPos = 0; // 從頭開始順序遍歷
+
     _startSubtitleTimer();
   }
 
@@ -220,32 +320,34 @@ class _HomePageState extends ConsumerState<HomePage>
             _lastProcessedTimelineIndex = i;
             final currentSubtitle = ref.read(digitalHumanTalkTextProvider);
             final timelineText = timeline.text;
-            
+
             String textToAppend = timelineText;
             // 包含中文和英文所有標點符號
-            const punctuations = '。，、；：！？""''《》「」【】（）…—,.;:!?\'"()[]{}~`';
+            const punctuations =
+                '。，、；：！？""'
+                '《》「」【】（）…—,.;:!?\'"()[]{}~`';
 
             // 從當前位置順序匹配
             int matchStart = _originalTextPos;
             int matchedChars = 0;
-            
+
             // 跳過開頭的標點符號
-            while (matchStart < _originalText.length && 
-                   punctuations.contains(_originalText[matchStart])) {
+            while (matchStart < _originalText.length &&
+                punctuations.contains(_originalText[matchStart])) {
               matchStart++;
             }
-            
+
             // 逐字匹配 timeline.text
             int currentPos = matchStart;
             for (int j = 0; j < timelineText.length; j++) {
               // 跳過中間的標點
-              while (currentPos < _originalText.length && 
-                     punctuations.contains(_originalText[currentPos])) {
+              while (currentPos < _originalText.length &&
+                  punctuations.contains(_originalText[currentPos])) {
                 currentPos++;
               }
-              
+
               // 匹配當前字符
-              if (currentPos < _originalText.length && 
+              if (currentPos < _originalText.length &&
                   _originalText[currentPos] == timelineText[j]) {
                 matchedChars++;
                 currentPos++;
@@ -254,36 +356,50 @@ class _HomePageState extends ConsumerState<HomePage>
                 break;
               }
             }
-            
+
             // 檢查是否完全匹配
             if (matchedChars == timelineText.length) {
               // 追加所有連續的標點符號
-              while (currentPos < _originalText.length && 
-                     punctuations.contains(_originalText[currentPos])) {
+              while (currentPos < _originalText.length &&
+                  punctuations.contains(_originalText[currentPos])) {
                 textToAppend += _originalText[currentPos];
                 currentPos++;
               }
-              
+
               // 更新全局位置指針
               _originalTextPos = currentPos;
             } else {
               // 匹配失敗,記錄詳細信息
-              final previewStart = _originalTextPos.clamp(0, _originalText.length);
-              final previewEnd = (_originalTextPos + 20).clamp(0, _originalText.length);
+              final previewStart = _originalTextPos.clamp(
+                0,
+                _originalText.length,
+              );
+              final previewEnd = (_originalTextPos + 20).clamp(
+                0,
+                _originalText.length,
+              );
               final preview = _originalText.substring(previewStart, previewEnd);
-              Log.get().warning('⚠️ 字幕匹配失敗 at pos $_originalTextPos: timeline="$timelineText", matched=$matchedChars/${timelineText.length}');
+              Log.get().warning(
+                '⚠️ 字幕匹配失敗 at pos $_originalTextPos: timeline="$timelineText", matched=$matchedChars/${timelineText.length}',
+              );
               Log.get().warning('   原文預覽(pos $_originalTextPos 起): "$preview"');
               if (currentPos < _originalText.length) {
-                Log.get().warning('   當前字符: "${_originalText[currentPos]}" vs 期望: "${timelineText[matchedChars]}"');
+                Log.get().warning(
+                  '   當前字符: "${_originalText[currentPos]}" vs 期望: "${timelineText[matchedChars]}"',
+                );
               }
             }
-            
+
             // 檢查長度並更新字幕
             final combinedText = currentSubtitle + textToAppend;
             if (combinedText.length > 30) {
-              ref.read(digitalHumanTalkTextProvider.notifier).setText(textToAppend);
+              ref
+                  .read(digitalHumanTalkTextProvider.notifier)
+                  .setText(textToAppend);
             } else {
-              ref.read(digitalHumanTalkTextProvider.notifier).setText(combinedText);
+              ref
+                  .read(digitalHumanTalkTextProvider.notifier)
+                  .setText(combinedText);
             }
           }
           break;
@@ -298,17 +414,18 @@ class _HomePageState extends ConsumerState<HomePage>
     _playStartTime = null;
     _lastProcessedTimelineIndex = -1;
     _currentTimeLines = [];
-    
+
     // 清理標點處理相關變數
     _originalText = '';
     _originalTextPos = 0;
-    
+
     // 播放結束時清除字幕
     ref.read(digitalHumanTalkTextProvider.notifier).setText('');
   }
 
   @override
   void dispose() {
+    _textController.dispose();
     _stopSubtitleTimer();
     ref.read(speechRecognitionProvider.notifier).cancelListening();
     super.dispose();

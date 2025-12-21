@@ -1,3 +1,4 @@
+import 'package:aiot_final_project_fontend/utils/debug/log.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -19,19 +20,18 @@ class SpeechRecognition extends _$SpeechRecognition {
   Future<bool> initialize() async {
     final available = await _speechToText.initialize(
       onStatus: (status) {
-        print('語音識別狀態: $status');
+        Log.get().info('[SpeechRecognition] onStatus $status at ${DateTime.now().toIso8601String()}');
         state = state.copyWith(isListening: status == 'listening');
       },
       onError: (error) {
-        print('語音識別錯誤: ${error.errorMsg}');
+        Log.get().warning('[SpeechRecognition] onError at ${DateTime.now().toIso8601String()} error: code=${error.errorMsg}, permanent=${error.permanent}');
         state = state.copyWith(isListening: false);
       },
     );
-    print('語音識別初始化: ${available ? "成功" : "失敗"}');
-    
+
     if (available) {
       final locales = await _speechToText.locales();
-      print('可用的語言: ${locales.map((l) => l.localeId).take(10).join(", ")}');
+      Log.get().info('可用的語言: ${locales.map((l) => l.localeId).take(10).join(", ")}');
     }
     
     return available;
@@ -43,9 +43,10 @@ class SpeechRecognition extends _$SpeechRecognition {
       state = state.copyWith(recognizedText: '', confidence: 0.0);
       
       try {
+        Log.get().info('[SpeechRecognition] startListening at ${DateTime.now().toIso8601String()}');
         _speechToText.listen(
           onResult: (result) {
-            print('onResult 觸發: text="${result.recognizedWords}", isFinal=${result.finalResult}, confidence=${result.confidence}');
+            Log.get().info('onResult 觸發: text="${result.recognizedWords}", isFinal=${result.finalResult}, confidence=${result.confidence}');
             
             // 只要有內容就更新（不管是否為最終結果）
             if (result.recognizedWords.isNotEmpty) {
@@ -66,18 +67,19 @@ class SpeechRecognition extends _$SpeechRecognition {
             enableHapticFeedback: true,
           ),
         );
-        print('listen() 調用完成');
       } catch (e) {
-        print('startListening 錯誤: $e');
+        Log.get().warning('startListening 錯誤: $e');
       }
     }
   }
 
   Future<void> stopListening() async {
     if (state.isListening) {
+      Log.get().info('[SpeechRecognition] stopListening at ${DateTime.now().toIso8601String()}');
       await _speechToText.stop();
       // 等待最後的 onResult 回調
       await Future.delayed(const Duration(milliseconds: 300));
+      Log.get().info('[SpeechRecognition] stopListening finished');
     }
   }
 
