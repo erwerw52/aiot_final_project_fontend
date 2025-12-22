@@ -12,7 +12,7 @@ class TtsApiConnector extends IApiConnector {
   }
 
   @override
-  Duration getConnectTimeout() => Duration(milliseconds: 5555);
+  Duration getConnectTimeout() => Duration(seconds: 120);
 
   @override
   String getDomain() => "";
@@ -21,7 +21,7 @@ class TtsApiConnector extends IApiConnector {
   String getHost() => "https://aiot-backend.zeabur.app";
 
   @override
-  Duration getReceiveTimeout() => Duration(milliseconds: 5555);
+  Duration getReceiveTimeout() => Duration(seconds: 120);
 
   @override
   Future<void> setDio(Dio dio, IApiMethod apiMethod) async {
