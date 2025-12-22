@@ -25,7 +25,19 @@ class IsNeedLoading extends _$IsNeedLoading {
     return false;
   }
 
-  void setLoading(bool isLoading){
+  void setLoading(bool isLoading) {
     state = isLoading;
+  }
+}
+
+@riverpod
+class UrlText extends _$UrlText {
+  @override
+  String build() {
+    return '';
+  }
+
+  void setUrl(String url){
+    state = url;
   }
 }

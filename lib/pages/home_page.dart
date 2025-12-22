@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -27,6 +28,7 @@ class _HomePageState extends ConsumerState<HomePage>
   int _lastProcessedTimelineIndex = -1;
   String _originalText = ''; // 儲存完整的原始文字(包含標點)
   int _originalTextPos = 0; // 當前處理到 originalText 的位置
+  String _urlText = '';
 
   @override
   void initState() {
@@ -142,6 +144,58 @@ class _HomePageState extends ConsumerState<HomePage>
               ),
             ),
 
+            if (ref.watch(urlTextProvider).isNotEmpty)
+              Positioned(
+                bottom: 110,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _launchURL(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7461a3),
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.link_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Your schedule is ready!!',
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
             // 語音識別控制按鈕
             Consumer(
               builder: (context, ref, widget) {
@@ -159,12 +213,15 @@ class _HomePageState extends ConsumerState<HomePage>
                           children: [
                             Assets.images.icon.loadingIcon.image(
                               height: 65,
-                              width: 65
+                              width: 65,
                             ),
                             SizedBox(width: 5),
                             Text(
                               'Just a few moments...',
-                              style: TextStyle(color: Colors.white, fontSize: 18),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                              ),
                             ),
                           ],
                         )
@@ -224,14 +281,30 @@ class _HomePageState extends ConsumerState<HomePage>
                                   if (chatInputText.isNotEmpty) {
                                     final textToSend = chatInputText;
 
-                                    // 清空輸入框
+                                    // 清空輸入框與 url
                                     ref
                                         .read(chatInputProvider.notifier)
                                         .clearText();
                                     _textController.clear();
 
+                                    ref
+                                        .read(urlTextProvider.notifier)
+                                        .setUrl('');
+
                                     // 隱藏鍵盤
                                     FocusScope.of(context).unfocus();
+
+                                    await Future.delayed(
+                                      Duration(milliseconds: 800),
+                                    );
+
+                                    ref
+                                        .read(
+                                          digitalHumanTalkTextProvider.notifier,
+                                        )
+                                        .setText(
+                                          '已收到!! 馬上來研究，一定幫你排個超讚的行程，敬請期待！',
+                                        );
 
                                     final ByteData byteData = await rootBundle
                                         .load(Assets.wav.hearRequest);
@@ -241,14 +314,20 @@ class _HomePageState extends ConsumerState<HomePage>
                                         .read(duixServiceProvider)
                                         .playAudioBytes(bytes);
 
-                                    ref.read(isNeedLoadingProvider.notifier).setLoading(true);
+                                    ref
+                                        .read(isNeedLoadingProvider.notifier)
+                                        .setLoading(true);
 
                                     try {
                                       var response = await ref
                                           .read(ttsRepositoryProvider)
                                           .getTtsWav(text: textToSend);
 
-                                      ref.read(isNeedLoadingProvider.notifier).setLoading(false);
+                                      ref
+                                          .read(isNeedLoadingProvider.notifier)
+                                          .setLoading(false);
+
+                                      _urlText = response.url;
 
                                       _currentTimeLines = response.timeLines;
 
@@ -261,6 +340,10 @@ class _HomePageState extends ConsumerState<HomePage>
                                       _handlePlayStart(response);
                                     } catch (e) {
                                       print(e.toString());
+
+                                      ref
+                                          .read(isNeedLoadingProvider.notifier)
+                                          .setLoading(false);
                                     }
 
                                     return;
@@ -320,6 +403,15 @@ class _HomePageState extends ConsumerState<HomePage>
     );
   }
 
+  void _launchURL() async {
+    var url = ref.read(urlTextProvider);
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    } else {
+      _showSnackBar('無法打開網頁$url', Colors.red);
+    }
+  }
+
   void _showSnackBar(String message, Color backgroundColor) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -359,6 +451,7 @@ class _HomePageState extends ConsumerState<HomePage>
       if (_currentTimeLines.isNotEmpty) {
         final lastTimeline = _currentTimeLines.last;
         if (elapsed > lastTimeline.end + 3.0) {
+          ref.read(urlTextProvider.notifier).setUrl(_urlText);
           _handlePlayStop(); // 自動停止
           return;
         }
