@@ -18,6 +18,16 @@ class $AssetsImagesGen {
   $AssetsImagesIconGen get icon => const $AssetsImagesIconGen();
 }
 
+class $AssetsWavGen {
+  const $AssetsWavGen();
+
+  /// File path: assets/wav/hear_request.wav
+  String get hearRequest => 'assets/wav/hear_request.wav';
+
+  /// List of all assets
+  List<String> get values => [hearRequest];
+}
+
 class $AssetsImagesIconGen {
   const $AssetsImagesIconGen();
 
@@ -37,6 +47,7 @@ class Assets {
   const Assets._();
 
   static const $AssetsImagesGen images = $AssetsImagesGen();
+  static const $AssetsWavGen wav = $AssetsWavGen();
 }
 
 class AssetGenImage {

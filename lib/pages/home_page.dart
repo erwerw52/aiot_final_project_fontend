@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:aiot_final_project_fontend/api/tts_api/response_data/tts_response.dart';
+import 'package:aiot_final_project_fontend/gen/assets.gen.dart';
 import 'package:aiot_final_project_fontend/providers/chat_input_provider.dart';
 import 'package:aiot_final_project_fontend/providers/duix_provider.dart';
 import 'package:aiot_final_project_fontend/providers/speech_provider.dart';
@@ -214,6 +215,10 @@ class _HomePageState extends ConsumerState<HomePage>
                               // 隱藏鍵盤
                               FocusScope.of(context).unfocus();
 
+                              final ByteData byteData = await rootBundle.load(Assets.wav.hearRequest);
+                              final Uint8List bytes = byteData.buffer.asUint8List();
+                              await ref.read(duixServiceProvider).playAudioBytes(bytes);
+
                               try {
                                 var response = await ref
                                     .read(ttsRepositoryProvider)
@@ -251,8 +256,6 @@ class _HomePageState extends ConsumerState<HomePage>
                                 return;
                               }
                             } else {
-                              // 開始聆聽，直接返回，不立即顯示未識別的提示
-                              print('[HomePage] startListening invoked');
                               ref
                                   .read(speechRecognitionProvider.notifier)
                                   .startListening();
@@ -261,20 +264,18 @@ class _HomePageState extends ConsumerState<HomePage>
                               return;
                             }
                           },
-                          child: Container(
-                            child: Icon(
-                              chatInputText.isNotEmpty
-                                  ? Icons.send_rounded
-                                  : (speechState.isListening
-                                        ? Icons.stop_rounded
-                                        : Icons.mic_rounded),
-                              color: chatInputText.isNotEmpty
-                                  ? Color(0xFF7461a3)
-                                  : (speechState.isListening)
-                                  ? Colors.red
-                                  : Color(0xFF7461a3),
-                              size: 30,
-                            ),
+                          child: Icon(
+                            chatInputText.isNotEmpty
+                                ? Icons.send_rounded
+                                : (speechState.isListening
+                                      ? Icons.stop_rounded
+                                      : Icons.mic_rounded),
+                            color: chatInputText.isNotEmpty
+                                ? Color(0xFF7461a3)
+                                : (speechState.isListening)
+                                ? Colors.red
+                                : Color(0xFF7461a3),
+                            size: 30,
                           ),
                         ),
                       ],
