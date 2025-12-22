@@ -344,6 +344,8 @@ class _HomePageState extends ConsumerState<HomePage>
                                       ref
                                           .read(isNeedLoadingProvider.notifier)
                                           .setLoading(false);
+
+                                      _showSnackBar('發生異常，請確認伺服器連線或是 n8n 失效', Colors.red);
                                     }
 
                                     return;
