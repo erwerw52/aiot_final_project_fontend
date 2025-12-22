@@ -17,3 +17,15 @@ class ChatInput extends _$ChatInput {
     state = '';
   }
 }
+
+@riverpod
+class IsNeedLoading extends _$IsNeedLoading {
+  @override
+  bool build() {
+    return false;
+  }
+
+  void setLoading(bool isLoading){
+    state = isLoading;
+  }
+}

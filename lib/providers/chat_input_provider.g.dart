@@ -60,3 +60,56 @@ abstract class _$ChatInput extends $Notifier<String> {
     element.handleValue(ref, created);
   }
 }
+
+@ProviderFor(IsNeedLoading)
+const isNeedLoadingProvider = IsNeedLoadingProvider._();
+
+final class IsNeedLoadingProvider
+    extends $NotifierProvider<IsNeedLoading, bool> {
+  const IsNeedLoadingProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'isNeedLoadingProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$isNeedLoadingHash();
+
+  @$internal
+  @override
+  IsNeedLoading create() => IsNeedLoading();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$isNeedLoadingHash() => r'43e5395ab4fa1c2f850c8b40ac35b161c6366a7b';
+
+abstract class _$IsNeedLoading extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
