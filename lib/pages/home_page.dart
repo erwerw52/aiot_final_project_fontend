@@ -208,7 +208,7 @@ class _HomePageState extends ConsumerState<HomePage>
                   bottom: 12,
                   left: 16,
                   right: 16,
-                  child: !isLoading
+                  child: isLoading
                       ? Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
