@@ -58,6 +58,8 @@ class SpeechRecognition extends _$SpeechRecognition {
           },
           // 先嘗試不指定 locale，使用系統默認
           // localeId: 'zh-TW',
+          listenFor: const Duration(hours: 1), // 設定為 1 小時，基本上不會自動停止
+          pauseFor: const Duration(hours: 1),  // 暫停偵測時間也設長，避免停頓時自動停止
           listenOptions: SpeechListenOptions(
             listenMode: ListenMode.dictation,
             partialResults: true,

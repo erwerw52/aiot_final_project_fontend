@@ -145,7 +145,7 @@ final class UrlTextProvider extends $NotifierProvider<UrlText, String> {
   }
 }
 
-String _$urlTextHash() => r'dcb42d5852f506854c94624bb1dc5b03283fc104';
+String _$urlTextHash() => r'd1e1245a640ff68bea90124d7e16d1be75e1baba';
 
 abstract class _$UrlText extends $Notifier<String> {
   String build();
