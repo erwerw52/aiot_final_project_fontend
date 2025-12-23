@@ -41,7 +41,7 @@ final class SpeechRecognitionProvider
   }
 }
 
-String _$speechRecognitionHash() => r'b5799beb7e04fcfed4a9ab51259fe231f62a6922';
+String _$speechRecognitionHash() => r'2745cfc6b02a7abfe2da8e4bd5a57081ca71002e';
 
 abstract class _$SpeechRecognition extends $Notifier<SpeechState> {
   SpeechState build();

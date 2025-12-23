@@ -6,6 +6,7 @@ import 'package:aiot_final_project_fontend/providers/duix_provider.dart';
 import 'package:aiot_final_project_fontend/providers/speech_provider.dart';
 import 'package:aiot_final_project_fontend/repository/tts_repository.dart';
 import 'package:aiot_final_project_fontend/utils/debug/log.dart';
+import 'package:aiot_final_project_fontend/utils/wave_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -207,7 +208,7 @@ class _HomePageState extends ConsumerState<HomePage>
                   bottom: 12,
                   left: 16,
                   right: 16,
-                  child: isLoading
+                  child: !isLoading
                       ? Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -216,10 +217,11 @@ class _HomePageState extends ConsumerState<HomePage>
                               width: 65,
                             ),
                             SizedBox(width: 5),
-                            Text(
-                              'Just a few moments...',
+                            WaveText(
+                              text: 'Just a few moments....',
                               style: TextStyle(
                                 color: Colors.white,
+                                fontWeight: FontWeight.w600,
                                 fontSize: 18,
                               ),
                             ),
