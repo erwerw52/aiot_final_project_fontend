@@ -13,6 +13,7 @@
 - 逼真的數位人渲染與表情動畫
 - 說話時的嘴形同步技術
 - 自然流暢的對話互動
+- 來源：[https://github.com/duixcom/Duix-Mobile?tab=readme-ov-file](https://github.com/duixcom/Duix-Mobile?tab=readme-ov-file)
 
 ### 🎤 即時語音識別
 支援使用者透過語音與系統溝通：
